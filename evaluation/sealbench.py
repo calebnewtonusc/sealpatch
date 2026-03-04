@@ -107,6 +107,9 @@ def load_cases_from_dir(cases_dir: Path) -> list[SealBenchCase]:
         for f in cases_dir.glob("*.json"):
             try:
                 data = json.loads(f.read_text())
+                # Convert cve_category string to CVECategory enum if needed.
+                if "cve_category" in data and isinstance(data["cve_category"], str):
+                    data["cve_category"] = CVECategory(data["cve_category"])
                 cases.append(SealBenchCase(**data))
             except Exception:
                 pass

@@ -80,6 +80,7 @@ def train(config: DPOCfg):
             "Run Stage 2 (train_rl.py) before Stage 3 (train_dpo.py)"
         )
     model = PeftModel.from_pretrained(base, config.rl_adapter, is_trainable=True)
+    model.enable_input_require_grads()
 
     dataset = load_dpo_dataset(config.dpo_pairs_path)
     split = dataset.train_test_split(test_size=0.05, seed=42)

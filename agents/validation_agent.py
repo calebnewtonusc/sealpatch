@@ -82,6 +82,11 @@ def apply_diff(original: str, diff: str, workdir: Path) -> Optional[str]:
         return orig_path.read_text()
 
     # Fallback: git apply (handles git-format diffs better)
+    # Initialize a temporary git repo so git apply has a valid git context.
+    subprocess.run(
+        ["git", "init"],
+        capture_output=True, text=True, cwd=str(workdir),
+    )
     result2 = subprocess.run(
         ["git", "apply", f"--directory={workdir}", str(diff_path)],
         capture_output=True, text=True, cwd=str(workdir),

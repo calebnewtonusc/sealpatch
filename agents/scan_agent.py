@@ -78,6 +78,8 @@ def normalize_grype_output(grype_json: dict) -> dict:
         cve_id = vuln.get("id", "")
         pkg = match.get("artifact", {})
 
+        locations = pkg.get("locations", [])
+        loc = locations[0] if locations else {}
         finding = {
             "cve_id": cve_id,
             "severity": severity,
@@ -86,7 +88,7 @@ def normalize_grype_output(grype_json: dict) -> dict:
             "installed_version": pkg.get("version", ""),
             "fixed_version": (vuln.get("fix", {}).get("versions") or [None])[0],
             "artifact_type": pkg.get("type", ""),
-            "artifact_location": pkg.get("locations", [{}])[0].get("path", ""),
+            "artifact_location": loc.get("path", ""),
         }
 
         if severity == "CRITICAL":

@@ -1,10 +1,10 @@
-# Stage 3: DPO config — GreenLight CI
+# Stage 3: DPO config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train_dpo.py
 
 model:
   base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"
   rl_adapter: "./checkpoints/rl"
-  output_dir: "./checkpoints/greenlight-final"
+  output_dir: "./checkpoints/sealpatch-final"
 
 dpo:
   learning_rate: 1.0e-6
@@ -20,7 +20,8 @@ dpo:
 logging:
   logging_steps: 10
   save_steps: 100
-  run_name: "greenlight-ci-dpo-v1"
+  report_to: "none"
+  run_name: "sealpatch-dpo-v1"
 
 data:
   dpo_pairs_path: "./data/training/dpo_pairs.jsonl"

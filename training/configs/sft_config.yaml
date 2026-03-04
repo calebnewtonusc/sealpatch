@@ -1,4 +1,4 @@
-# Stage 1: SFT config — GreenLight CI
+# Stage 1: SFT config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train.py --deepspeed training/configs/deepspeed_zero3.json
 
 model:
@@ -41,8 +41,8 @@ logging:
   save_steps: 500
   eval_steps: 500
   save_total_limit: 3
-  report_to: "wandb"
-  run_name: "greenlight-ci-sft-v1"
+  report_to: "none"
+  run_name: "sealpatch-sft-v1"
 
 data:
-  training_data: "./data/training/ci_repair_pairs.jsonl"
+  training_data: "./data/training/cve_remediation_pairs.jsonl"

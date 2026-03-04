@@ -1,4 +1,4 @@
-# Stage 2: GRPO config — GreenLight CI
+# Stage 2: GRPO config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train_rl.py
 
 model:
@@ -25,7 +25,8 @@ reward:
 logging:
   logging_steps: 10
   save_steps: 100
-  run_name: "greenlight-ci-grpo-v1"
+  report_to: "none"
+  run_name: "sealpatch-grpo-v1"
 
 data:
-  rl_tasks_path: "./data/rl/ci_sandbox_tasks.jsonl"
+  rl_tasks_path: "./data/rl/cve_scan_tasks.jsonl"

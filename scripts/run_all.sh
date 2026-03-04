@@ -45,9 +45,9 @@ log "==============================="
 if [[ $FROM_STAGE -le 1 ]]; then
   log "--- Stage 1: Dockerfile + CVE Discovery ---"
   run "python '$PROJECT_ROOT/discovery/dockerfile_crawler.py' \
-    --output-dir '$PROJECT_ROOT/data/raw/artifacts' \
+    --output '$PROJECT_ROOT/data/raw/artifacts' \
     --workers 12 \
-    --max-repos 5000" 2>&1 | tee "$LOG_DIR/stage1_crawler.log"
+    --repos 5000" 2>&1 | tee "$LOG_DIR/stage1_crawler.log"
 
   run "python '$PROJECT_ROOT/discovery/cve_database.py' \
     --sync-all \
@@ -75,9 +75,9 @@ if [[ $FROM_STAGE -le 3 ]]; then
   sleep 45  # Wait for servers to load model
 
   run "python '$PROJECT_ROOT/synthesis/remediation_synthesizer.py' \
-    --input '$PROJECT_ROOT/data/scanned' \
-    --output '$PROJECT_ROOT/data/training/cve_remediation_pairs.jsonl' \
-    --workers 32" 2>&1 | tee "$LOG_DIR/stage3_synth.log"
+    --advisories-dir '$PROJECT_ROOT/data/scanned' \
+    --output-dir '$PROJECT_ROOT/data/training' \
+    --concurrency 32" 2>&1 | tee "$LOG_DIR/stage3_synth.log"
 
   kill $VLLM_PID 2>/dev/null || true
   log "Stage 3 complete."

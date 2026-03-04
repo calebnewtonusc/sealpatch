@@ -99,15 +99,14 @@ def compute_cve_reward(patch_text: str, task_meta: dict, sandbox_url: str) -> fl
 def build_reward_fn(config: RLConfig):
     def reward_fn(
         prompts: list[str],
-        completions: list[list[str]],
+        completions: list[str],
         **kwargs,
     ) -> list[float]:
-        # completions is list[list[str]]: one inner list per prompt.
+        # completions is a flat list of strings: num_prompts * num_generations entries.
+        # prompts is a flat list of the same length (each prompt repeated num_generations times).
         metadata_list = kwargs.get("metadata", [])
         rewards = []
-        for i, completion_group in enumerate(completions):
-            # Use the first completion for each prompt group.
-            completion = completion_group[0] if completion_group else ""
+        for i, completion in enumerate(completions):
             meta = metadata_list[i % len(metadata_list)] if metadata_list else {}
             r = compute_cve_reward(completion, meta, config.sandbox_api_url)
             rewards.append(r)
@@ -164,6 +163,7 @@ def train(config: RLConfig):
     tokenizer = AutoTokenizer.from_pretrained(config.base_model)
     tokenizer.pad_token = tokenizer.eos_token
     model = PeftModel.from_pretrained(base, config.sft_adapter, is_trainable=True)
+    model.enable_input_require_grads()
 
     dataset = load_rl_dataset(config.rl_tasks_path)
     reward_fn = build_reward_fn(config)
