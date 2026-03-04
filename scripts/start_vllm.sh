@@ -51,7 +51,7 @@ for i in 0 1 2 3; do
   if curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1; then
     echo "[vLLM] Instance $((i+1)) (port $PORT): HEALTHY"
   else
-    echo "[vLLM] Instance $((i+1)) (port $PORT): NOT READY (check logs/$vllm_instance_${i}.log)"
+    echo "[vLLM] Instance $((i+1)) (port $PORT): NOT READY (check logs/vllm_instance_${i}.log)"
     ALL_OK=false
   fi
 done

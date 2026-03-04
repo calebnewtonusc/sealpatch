@@ -33,13 +33,11 @@ fi
 # Required env vars
 echo ""
 echo "--- Environment Variables ---"
-for var in GITHUB_TOKEN; do
-  if [[ -n "${!var:-}" ]]; then
-    ok "$var is set"
-  else
-    fail "$var is not set — required for Dockerfile discovery"
-  fi
-done
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  ok "GITHUB_TOKEN is set"
+else
+  fail "GITHUB_TOKEN is not set — required for Dockerfile discovery"
+fi
 
 for var in NVD_API_KEY WANDB_API_KEY ANTHROPIC_API_KEY; do
   if [[ -n "${!var:-}" ]]; then

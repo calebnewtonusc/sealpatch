@@ -1,5 +1,6 @@
 # Stage 3: DPO config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train_dpo.py
+---
 
 model:
   base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"

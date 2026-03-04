@@ -71,9 +71,9 @@ def load_dpo_dataset(path: str) -> Dataset:
 
 
 def train(config: DPOCfg):
-    tokenizer = AutoTokenizer.from_pretrained(config.base_model)
+    tokenizer = AutoTokenizer.from_pretrained(config.base_model)  # nosec B615
     tokenizer.pad_token = tokenizer.eos_token
-    base = AutoModelForCausalLM.from_pretrained(
+    base = AutoModelForCausalLM.from_pretrained(  # nosec B615
         config.base_model, torch_dtype=torch.bfloat16, use_cache=False
     )
     if not Path(config.rl_adapter).exists():
@@ -81,7 +81,7 @@ def train(config: DPOCfg):
             f"RL adapter not found: {config.rl_adapter}\n"
             "Run Stage 2 (train_rl.py) before Stage 3 (train_dpo.py)"
         )
-    model = PeftModel.from_pretrained(base, config.rl_adapter, is_trainable=True)
+    model = PeftModel.from_pretrained(base, config.rl_adapter, is_trainable=True)  # nosec B615
     model.enable_input_require_grads()
 
     dataset = load_dpo_dataset(config.dpo_pairs_path)

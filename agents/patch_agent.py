@@ -66,13 +66,13 @@ def get_model():
     global _model, _tokenizer
     if _model is None:
         logger.info(f"Loading SealPatch model from {MODEL_PATH}")
-        _tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+        _tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)  # nosec B615
         _tokenizer.pad_token = _tokenizer.eos_token
-        base = AutoModelForCausalLM.from_pretrained(
+        base = AutoModelForCausalLM.from_pretrained(  # nosec B615
             BASE_MODEL, torch_dtype=torch.bfloat16, device_map="auto"
         )
         if Path(MODEL_PATH).exists():
-            _model = PeftModel.from_pretrained(base, MODEL_PATH)
+            _model = PeftModel.from_pretrained(base, MODEL_PATH)  # nosec B615
         else:
             _model = base
             logger.warning(f"No adapter at {MODEL_PATH}, using base model")

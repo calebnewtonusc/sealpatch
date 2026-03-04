@@ -1,5 +1,6 @@
 # Stage 1: SFT config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train.py --deepspeed training/configs/deepspeed_zero3.json
+---
 
 model:
   base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"

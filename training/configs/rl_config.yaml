@@ -1,5 +1,6 @@
 # Stage 2: GRPO config — SealPatch
 # Run: deepspeed --num_gpus=18 training/train_rl.py
+---
 
 model:
   base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"

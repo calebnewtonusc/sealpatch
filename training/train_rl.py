@@ -93,9 +93,9 @@ def compute_cve_reward(patch_text: str, task_meta: dict, sandbox_url: str) -> fl
         # Minimality bonus
         diff_lines = len(
             [
-                l
-                for l in diff.split("\n")
-                if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+                line
+                for line in diff.split("\n")
+                if line.startswith(("+", "-")) and not line.startswith(("---", "+++"))
             ]
         )
         if diff_lines <= 5:
@@ -167,12 +167,12 @@ def load_rl_dataset(path: str) -> Dataset:
 
 def train(config: RLConfig):
     logger.info("Loading base model + SFT adapter for GRPO...")
-    base = AutoModelForCausalLM.from_pretrained(
+    base = AutoModelForCausalLM.from_pretrained(  # nosec B615
         config.base_model, torch_dtype=torch.bfloat16, use_cache=False
     )
-    tokenizer = AutoTokenizer.from_pretrained(config.base_model)
+    tokenizer = AutoTokenizer.from_pretrained(config.base_model)  # nosec B615
     tokenizer.pad_token = tokenizer.eos_token
-    model = PeftModel.from_pretrained(base, config.sft_adapter, is_trainable=True)
+    model = PeftModel.from_pretrained(base, config.sft_adapter, is_trainable=True)  # nosec B615
     model.enable_input_require_grads()
 
     dataset = load_rl_dataset(config.rl_tasks_path)

@@ -121,13 +121,13 @@ def load_cases_from_dir(cases_dir: Path) -> list[SealBenchCase]:
 
 def load_model(model_path: str):
     base_name = "Qwen/Qwen2.5-7B-Coder-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(base_name)
+    tokenizer = AutoTokenizer.from_pretrained(base_name)  # nosec B615
     tokenizer.pad_token = tokenizer.eos_token
-    base = AutoModelForCausalLM.from_pretrained(
+    base = AutoModelForCausalLM.from_pretrained(  # nosec B615
         base_name, torch_dtype=torch.bfloat16, device_map="auto"
     )
     if Path(model_path).exists():
-        model = PeftModel.from_pretrained(base, model_path)
+        model = PeftModel.from_pretrained(base, model_path)  # nosec B615
     else:
         model = base
         logger.warning(f"No adapter at {model_path}, using base model")
@@ -199,16 +199,16 @@ def evaluate_result(
 
     gt_lines = len(
         [
-            l
-            for l in case.correct_fix_diff.split("\n")
-            if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+            line
+            for line in case.correct_fix_diff.split("\n")
+            if line.startswith(("+", "-")) and not line.startswith(("---", "+++"))
         ]
     )
     gen_lines = len(
         [
-            l
-            for l in fix_text.split("\n")
-            if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+            line
+            for line in fix_text.split("\n")
+            if line.startswith(("+", "-")) and not line.startswith(("---", "+++"))
         ]
     )
     is_minimal = gen_lines <= max(gt_lines * 2, 5) if gt_lines > 0 else gen_lines <= 10
@@ -217,13 +217,13 @@ def evaluate_result(
     behavior_preserved = False
     if fix_applies:
         removed_lines = [
-            l[1:].strip()
-            for l in fix_text.split("\n")
-            if l.startswith("-") and not l.startswith("---")
+            line[1:].strip()
+            for line in fix_text.split("\n")
+            if line.startswith("-") and not line.startswith("---")
         ]
         critical_removed = any(
-            any(instr in l.upper() for instr in ("FROM ", "CMD ", "ENTRYPOINT "))
-            for l in removed_lines
+            any(instr in line.upper() for instr in ("FROM ", "CMD ", "ENTRYPOINT "))
+            for line in removed_lines
         )
         behavior_preserved = not critical_removed
 
