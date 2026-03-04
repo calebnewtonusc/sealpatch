@@ -87,6 +87,22 @@ def apply_diff(original: str, diff: str, workdir: Path) -> Optional[str]:
         ["git", "init"],
         capture_output=True, text=True, cwd=str(workdir),
     )
+    subprocess.run(
+        ["git", "config", "user.email", "sealpatch@localhost"],
+        capture_output=True, text=True, cwd=str(workdir),
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "SealPatch"],
+        capture_output=True, text=True, cwd=str(workdir),
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        capture_output=True, text=True, cwd=str(workdir),
+    )
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "init"],
+        capture_output=True, text=True, cwd=str(workdir),
+    )
     result2 = subprocess.run(
         ["git", "apply", f"--directory={workdir}", str(diff_path)],
         capture_output=True, text=True, cwd=str(workdir),
