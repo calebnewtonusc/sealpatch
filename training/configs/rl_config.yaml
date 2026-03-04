@@ -1,0 +1,31 @@
+# Stage 2: GRPO config — GreenLight CI
+# Run: deepspeed --num_gpus=18 training/train_rl.py
+
+model:
+  base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"
+  sft_adapter: "./checkpoints/sft"
+  output_dir: "./checkpoints/rl"
+
+grpo:
+  learning_rate: 5.0e-6
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  num_generations: 8
+  bf16: true
+  gradient_checkpointing: true
+
+reward:
+  sandbox_pool_size: 8
+  sandbox_api_url: "http://localhost:8080"
+  stability_reruns: 2
+  minimality_bonus_threshold: 10  # lines
+  verbosity_penalty_threshold: 50  # lines
+
+logging:
+  logging_steps: 10
+  save_steps: 100
+  run_name: "greenlight-ci-grpo-v1"
+
+data:
+  rl_tasks_path: "./data/rl/ci_sandbox_tasks.jsonl"

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Secrets
+.env
+
+# Data
+data/raw/
+data/synthesized/
+data/rl/
+checkpoints/
+results/
+
+# Model files
+*.bin
+*.safetensors
+*.pt
+
+# Logs
+*.log
+logs/
+wandb/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Test cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Grype/Trivy scan outputs
+*.sarif
+scan_results/

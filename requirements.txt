@@ -1,0 +1,64 @@
+# Core ML
+torch>=2.3.0
+transformers>=4.45.0
+peft>=0.12.0
+trl>=0.11.0
+datasets>=2.21.0
+deepspeed>=0.15.0
+accelerate>=0.34.0
+
+# vLLM (synthesis servers)
+vllm>=0.6.0
+
+# Training utilities
+bitsandbytes>=0.43.0
+sentencepiece>=0.2.0
+
+# Logging & monitoring
+loguru>=0.7.2
+wandb>=0.18.0
+rich>=13.8.0
+
+# CLI
+typer>=0.12.0
+
+# Data processing
+numpy>=1.26.0
+pandas>=2.2.0
+jsonlines>=4.0.0
+datasketch>=1.6.4
+
+# GitHub API
+PyGithub>=2.3.0
+httpx>=0.27.0
+requests>=2.32.0
+aiohttp>=3.10.0
+
+# CVE database integration
+# Grype and Trivy are CLI tools — install separately (see SETUP_GPU.md)
+# OSV, NVD, and GitHub Advisory APIs accessed via aiohttp (no extra package needed)
+
+# Dockerfile parsing
+dockerfile-parse>=2.0.0
+
+# SARIF parsing (scan result format)
+sarif-tools>=3.0.0
+
+# Dependency resolution
+packaging>=24.0  # For version range parsing
+requirements-parser>=0.11.0
+
+# Docker SDK (sandbox execution)
+docker>=7.1.0
+
+# Web server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Queue / state
+redis>=5.1.0
+
+# Dev extras
+pytest>=8.3.0
+ruff>=0.6.0
+mypy>=1.11.0

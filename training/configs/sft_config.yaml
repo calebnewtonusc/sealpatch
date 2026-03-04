@@ -1,0 +1,48 @@
+# Stage 1: SFT config — GreenLight CI
+# Run: deepspeed --num_gpus=18 training/train.py --deepspeed training/configs/deepspeed_zero3.json
+
+model:
+  base_model: "Qwen/Qwen2.5-7B-Coder-Instruct"
+  output_dir: "./checkpoints/sft"
+  max_seq_length: 16384
+  torch_dtype: "bfloat16"
+
+lora:
+  r: 64
+  lora_alpha: 128
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  bf16: true
+  gradient_checkpointing: true
+  packing: false
+  dataset_text_field: "text"
+
+logging:
+  logging_steps: 25
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 3
+  report_to: "wandb"
+  run_name: "greenlight-ci-sft-v1"
+
+data:
+  training_data: "./data/training/ci_repair_pairs.jsonl"
