@@ -7,19 +7,19 @@ and provide fast-path fixes for well-known CVEs.
 
 from dataclasses import dataclass, field
 from typing import Optional
-import re
 
 
 @dataclass
 class CVEPattern:
     """A known CVE pattern with deterministic remediation."""
+
     cve_id: str
     description: str
-    ecosystem: str                # python, javascript, java, go, rust, container
+    ecosystem: str  # python, javascript, java, go, rust, container
     package_name: str
-    vulnerable_range: str         # e.g. "<2.31.0", ">=1.0,<1.8"
+    vulnerable_range: str  # e.g. "<2.31.0", ">=1.0,<1.8"
     fixed_version: str
-    base_image_fix: Optional[str] = None   # If base image bump is the fix
+    base_image_fix: Optional[str] = None  # If base image bump is the fix
     category: str = "APP_DEP"
     cvss_score: float = 0.0
     notes: str = ""
@@ -28,8 +28,9 @@ class CVEPattern:
 @dataclass
 class BaseImagePattern:
     """Known vulnerable base images and their safe replacements."""
-    from_image: str               # e.g. "ubuntu:20.04"
-    to_image: str                 # e.g. "ubuntu:22.04"
+
+    from_image: str  # e.g. "ubuntu:20.04"
+    to_image: str  # e.g. "ubuntu:22.04"
     cves_fixed: list = field(default_factory=list)
     ecosystem: str = "container"
     notes: str = ""
@@ -351,12 +352,39 @@ def find_patterns_for_cves(cve_ids: list) -> list:
 def is_dev_only_package(package_name: str, ecosystem: str) -> bool:
     """Heuristic: is this package typically dev-only?"""
     DEV_PACKAGES = {
-        "python": {"pytest", "coverage", "mypy", "black", "flake8", "pylint",
-                   "sphinx", "ipython", "notebook", "jupyterlab", "bandit",
-                   "tox", "hypothesis", "factory-boy", "faker", "responses"},
-        "javascript": {"jest", "mocha", "chai", "eslint", "prettier", "nodemon",
-                       "webpack", "babel", "typescript", "ts-node", "vitest",
-                       "playwright", "cypress"},
+        "python": {
+            "pytest",
+            "coverage",
+            "mypy",
+            "black",
+            "flake8",
+            "pylint",
+            "sphinx",
+            "ipython",
+            "notebook",
+            "jupyterlab",
+            "bandit",
+            "tox",
+            "hypothesis",
+            "factory-boy",
+            "faker",
+            "responses",
+        },
+        "javascript": {
+            "jest",
+            "mocha",
+            "chai",
+            "eslint",
+            "prettier",
+            "nodemon",
+            "webpack",
+            "babel",
+            "typescript",
+            "ts-node",
+            "vitest",
+            "playwright",
+            "cypress",
+        },
     }
     dev_set = DEV_PACKAGES.get(ecosystem, set())
     return package_name.lower() in dev_set

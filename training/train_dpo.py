@@ -56,14 +56,16 @@ def load_dpo_dataset(path: str) -> Dataset:
             rejected = ex.get("rejected_fix") or ex.get("rejected", "")
             if not (prompt and chosen and rejected) or chosen == rejected:
                 continue
-            examples.append({
-                "prompt": (
-                    f"<|im_start|>system\n{SEALPATCH_SYSTEM_PROMPT}<|im_end|>\n"
-                    f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
-                ),
-                "chosen": chosen + "<|im_end|>",
-                "rejected": rejected + "<|im_end|>",
-            })
+            examples.append(
+                {
+                    "prompt": (
+                        f"<|im_start|>system\n{SEALPATCH_SYSTEM_PROMPT}<|im_end|>\n"
+                        f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+                    ),
+                    "chosen": chosen + "<|im_end|>",
+                    "rejected": rejected + "<|im_end|>",
+                }
+            )
     logger.info(f"DPO dataset: {len(examples)} pairs")
     return Dataset.from_list(examples)
 
@@ -91,19 +93,27 @@ def train(config: DPOCfg):
         num_train_epochs=config.num_train_epochs,
         per_device_train_batch_size=config.per_device_train_batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        beta=config.beta, max_length=config.max_length, max_prompt_length=config.max_prompt_length,
+        beta=config.beta,
+        max_length=config.max_length,
+        max_prompt_length=config.max_prompt_length,
         eval_strategy="steps",
         eval_steps=config.save_steps,
-        logging_steps=config.logging_steps, save_steps=config.save_steps,
-        bf16=True, gradient_checkpointing=True,
+        logging_steps=config.logging_steps,
+        save_steps=config.save_steps,
+        bf16=True,
+        gradient_checkpointing=True,
         deepspeed="training/configs/deepspeed_zero3.json",
         report_to="wandb" if os.environ.get("WANDB_API_KEY") else "none",
         run_name="sealpatch-dpo",
     )
 
     trainer = DPOTrainer(
-        model=model, ref_model=None, processing_class=tokenizer,
-        args=dpo_cfg, train_dataset=split["train"], eval_dataset=split["test"],
+        model=model,
+        ref_model=None,
+        processing_class=tokenizer,
+        args=dpo_cfg,
+        train_dataset=split["train"],
+        eval_dataset=split["test"],
     )
     logger.info("Starting DPO training for SealPatch...")
     trainer.train()
@@ -114,6 +124,11 @@ def train(config: DPOCfg):
 
 if __name__ == "__main__":
     import typer
-    def main(rl_adapter: str = "./checkpoints/rl", output_dir: str = "./checkpoints/sealpatch-final"):
+
+    def main(
+        rl_adapter: str = "./checkpoints/rl",
+        output_dir: str = "./checkpoints/sealpatch-final",
+    ):
         train(DPOCfg(rl_adapter=rl_adapter, output_dir=output_dir))
+
     typer.run(main)

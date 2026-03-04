@@ -16,13 +16,11 @@ Usage:
 """
 
 import argparse
-import asyncio
 import json
 import time
 import urllib.request
 import urllib.parse
 from pathlib import Path
-from typing import Optional
 
 DATA_DIR = Path(__file__).parents[1] / "data"
 OSV_FILE = DATA_DIR / "osv_vulnerabilities.jsonl"
@@ -32,27 +30,34 @@ OSV_BASE = "https://api.osv.dev/v1"
 
 # ─── Ecosystems to sync ────────────────────────────────────────────────────────
 ALL_ECOSYSTEMS = [
-    "PyPI",          # Python packages
-    "npm",           # Node.js packages
-    "Go",            # Go modules
-    "Maven",         # Java packages
-    "crates.io",     # Rust packages
-    "RubyGems",      # Ruby gems
-    "NuGet",         # .NET packages
-    "Packagist",     # PHP/Composer packages
-    "Hex",           # Elixir packages
-    "Pub",           # Dart/Flutter packages
-    "SwiftURL",      # Swift packages
-    "Debian",        # Debian packages (apt)
-    "Alpine",        # Alpine packages (apk)
-    "Ubuntu",        # Ubuntu packages
-    "Linux",         # Linux kernel
+    "PyPI",  # Python packages
+    "npm",  # Node.js packages
+    "Go",  # Go modules
+    "Maven",  # Java packages
+    "crates.io",  # Rust packages
+    "RubyGems",  # Ruby gems
+    "NuGet",  # .NET packages
+    "Packagist",  # PHP/Composer packages
+    "Hex",  # Elixir packages
+    "Pub",  # Dart/Flutter packages
+    "SwiftURL",  # Swift packages
+    "Debian",  # Debian packages (apt)
+    "Alpine",  # Alpine packages (apk)
+    "Ubuntu",  # Ubuntu packages
+    "Linux",  # Linux kernel
 ]
 
 # Ecosystems most relevant to container security
 CONTAINER_ECOSYSTEMS = [
-    "PyPI", "npm", "Go", "Maven", "crates.io", "RubyGems",
-    "Debian", "Alpine", "Ubuntu",
+    "PyPI",
+    "npm",
+    "Go",
+    "Maven",
+    "crates.io",
+    "RubyGems",
+    "Debian",
+    "Alpine",
+    "Ubuntu",
 ]
 
 # ─── CVE severity keywords for filtering ─────────────────────────────────────
@@ -123,12 +128,14 @@ def extract_version_ranges(affected_entry: dict) -> list[dict]:
             if "last_affected" in event:
                 last_affected = event["last_affected"]
 
-        ranges.append({
-            "type": range_type,
-            "introduced": introduced,
-            "fixed": fixed,
-            "last_affected": last_affected,
-        })
+        ranges.append(
+            {
+                "type": range_type,
+                "introduced": introduced,
+                "fixed": fixed,
+                "last_affected": last_affected,
+            }
+        )
     return ranges
 
 
@@ -199,7 +206,9 @@ def build_osv_record(vuln: dict, ecosystem: str) -> list[dict]:
             f"Vulnerability {osv_id} in {pkg_ecosystem} package {pkg_name}",
         ]
         if cve_aliases:
-            training_description_parts.append(f"CVE aliases: {', '.join(cve_aliases[:3])}")
+            training_description_parts.append(
+                f"CVE aliases: {', '.join(cve_aliases[:3])}"
+            )
         if summary:
             training_description_parts.append(f"Summary: {summary}")
         if fixed_version:
@@ -228,8 +237,8 @@ def build_osv_record(vuln: dict, ecosystem: str) -> list[dict]:
             # Patch instruction for Dockerfile/requirements.txt
             "patch_instruction": (
                 f"Upgrade {pkg_name} to {fixed_version} or later to fix {osv_id}"
-                if fixed_version else
-                f"Package {pkg_name} is affected by {osv_id} - check for updates"
+                if fixed_version
+                else f"Package {pkg_name} is affected by {osv_id} - check for updates"
             ),
         }
         records.append(record)
@@ -260,12 +269,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Sync OSV vulnerability database for SealPatch training"
     )
-    parser.add_argument("--ecosystems", nargs="+", default=CONTAINER_ECOSYSTEMS,
-                        help="Ecosystems to sync")
-    parser.add_argument("--all-ecosystems", action="store_true",
-                        help="Sync ALL ecosystems (including Debian, Alpine, etc.)")
-    parser.add_argument("--severity", choices=["critical", "high", "medium", "all"],
-                        default="all", help="Minimum severity to include")
+    parser.add_argument(
+        "--ecosystems",
+        nargs="+",
+        default=CONTAINER_ECOSYSTEMS,
+        help="Ecosystems to sync",
+    )
+    parser.add_argument(
+        "--all-ecosystems",
+        action="store_true",
+        help="Sync ALL ecosystems (including Debian, Alpine, etc.)",
+    )
+    parser.add_argument(
+        "--severity",
+        choices=["critical", "high", "medium", "all"],
+        default="all",
+        help="Minimum severity to include",
+    )
     parser.add_argument("--max-per-ecosystem", type=int, default=50000)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
@@ -277,11 +297,15 @@ def main():
 
     severity_filter = set(SEVERITY_LEVELS.get(args.severity, SEVERITY_LEVELS["all"]))
 
-    progress = load_progress() if args.resume else {"completed_ecosystems": [], "total_saved": 0}
+    progress = (
+        load_progress()
+        if args.resume
+        else {"completed_ecosystems": [], "total_saved": 0}
+    )
     completed = progress.get("completed_ecosystems", [])
     total_saved = progress.get("total_saved", 0)
 
-    print(f"=== OSV DATABASE SYNC ===")
+    print("=== OSV DATABASE SYNC ===")
     print(f"Ecosystems: {ecosystems}")
     print(f"Severity filter: {args.severity}")
     print(f"Already completed: {completed}\n")
@@ -305,7 +329,9 @@ def main():
             records = []
             for vuln in vulns:
                 # Severity filter
-                sev = (vuln.get("database_specific", {}).get("severity") or "UNKNOWN").upper()
+                sev = (
+                    vuln.get("database_specific", {}).get("severity") or "UNKNOWN"
+                ).upper()
                 if sev not in severity_filter and "UNKNOWN" not in severity_filter:
                     continue
                 new_records = build_osv_record(vuln, ecosystem)
@@ -317,7 +343,9 @@ def main():
             page += 1
 
             page_token = data.get("next_page_token")
-            print(f"    Page {page}: +{len(records)} records | ecosystem total: {ecosystem_count} | overall: {total_saved}")
+            print(
+                f"    Page {page}: +{len(records)} records | ecosystem total: {ecosystem_count} | overall: {total_saved}"
+            )
 
             if not page_token:
                 break
@@ -327,7 +355,7 @@ def main():
         save_progress(completed, total_saved)
         print(f"  {ecosystem} complete: {ecosystem_count} vulns processed")
 
-    print(f"\n=== OSV SYNC COMPLETE ===")
+    print("\n=== OSV SYNC COMPLETE ===")
     print(f"Total vulnerability records saved: {total_saved}")
     print(f"Output: {OSV_FILE}")
 

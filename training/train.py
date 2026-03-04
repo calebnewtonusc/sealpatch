@@ -55,7 +55,7 @@ def format_example(example: dict) -> str:
     fix_diff = example.get("fix_diff", "")
     fix_explanation = example.get("fix_explanation", "")
     is_dev_only = example.get("is_dev_only", False)
-    behavior_preserved = example.get("behavior_preserved", True)
+    example.get("behavior_preserved", True)
 
     cves = scan_before.get("cves", [cve_id] if cve_id else [])
     critical = scan_before.get("critical", 0)
@@ -69,7 +69,9 @@ def format_example(example: dict) -> str:
         f"Categorize each CVE and generate the minimal fix."
     )
 
-    suppress_note = f"[SUPPRESSED — dev-only, does not affect production]" if is_dev_only else ""
+    suppress_note = (
+        "[SUPPRESSED — dev-only, does not affect production]" if is_dev_only else ""
+    )
 
     assistant_msg = (
         f"<categorize>\n"
@@ -131,9 +133,20 @@ def train(config: SFTConfig_SP):
         config.base_model, torch_dtype=torch.bfloat16, use_cache=False
     )
     lora_config = LoraConfig(
-        r=config.lora_r, lora_alpha=config.lora_alpha, lora_dropout=config.lora_dropout,
-        bias="none", task_type=TaskType.CAUSAL_LM,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        r=config.lora_r,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        bias="none",
+        task_type=TaskType.CAUSAL_LM,
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
@@ -154,7 +167,8 @@ def train(config: SFTConfig_SP):
         eval_steps=config.save_steps,
         logging_steps=config.logging_steps,
         save_steps=config.save_steps,
-        bf16=True, gradient_checkpointing=True,
+        bf16=True,
+        gradient_checkpointing=True,
         deepspeed="training/configs/deepspeed_zero3.json",
         report_to="wandb" if os.environ.get("WANDB_API_KEY") else "none",
         run_name="sealpatch-sft",
@@ -163,8 +177,10 @@ def train(config: SFTConfig_SP):
     )
 
     trainer = SFTTrainer(
-        model=model, processing_class=tokenizer,
-        train_dataset=split["train"], eval_dataset=split["test"],
+        model=model,
+        processing_class=tokenizer,
+        train_dataset=split["train"],
+        eval_dataset=split["test"],
         args=sft_cfg,
     )
     logger.info("Starting SFT training for SealPatch...")
@@ -176,6 +192,8 @@ def train(config: SFTConfig_SP):
 
 if __name__ == "__main__":
     import typer
+
     def main(output_dir: str = "./checkpoints/sft"):
         train(SFTConfig_SP(output_dir=output_dir))
+
     typer.run(main)

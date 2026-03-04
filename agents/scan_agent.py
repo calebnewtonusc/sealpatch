@@ -14,7 +14,6 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import typer
 from loguru import logger
@@ -29,7 +28,9 @@ def run_grype_on_dir(target_dir: str) -> dict:
     try:
         result = subprocess.run(
             [GRYPE_BIN, "dir:" + target_dir, "-o", "json", "--fail-on", "none"],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode not in (0, 1):  # 1 = vulnerabilities found
             logger.debug(f"Grype error: {result.stderr[:200]}")
@@ -45,7 +46,9 @@ def run_grype_on_image(image_ref: str) -> dict:
     try:
         result = subprocess.run(
             [GRYPE_BIN, image_ref, "-o", "json", "--fail-on", "none"],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         return json.loads(result.stdout) if result.stdout else {}
     except Exception as e:
@@ -58,7 +61,9 @@ def run_trivy_on_dockerfile(dockerfile_path: str) -> dict:
     try:
         result = subprocess.run(
             [TRIVY_BIN, "config", "--format", "json", dockerfile_path],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         return json.loads(result.stdout) if result.stdout else {}
     except Exception as e:
@@ -124,12 +129,13 @@ def scan_dockerfile(dockerfile_content: str, language: str = "unknown") -> dict:
         dockerfile_path.write_text(dockerfile_content)
 
         # Try to build image for scanning (if Docker is available)
-        image_tag = f"sealpatch-scan-temp:latest"
+        image_tag = "sealpatch-scan-temp:latest"
         built = False
         try:
             result = subprocess.run(
                 ["docker", "build", "-t", image_tag, tmpdir],
-                capture_output=True, timeout=120,
+                capture_output=True,
+                timeout=120,
             )
             built = result.returncode == 0
         except Exception:
@@ -172,7 +178,9 @@ def batch_scan_artifacts(
                         pass
 
         def scan_record(rec):
-            dockerfile_before = (rec.get("artifacts_before") or {}).get("Dockerfile", "")
+            dockerfile_before = (rec.get("artifacts_before") or {}).get(
+                "Dockerfile", ""
+            )
             dockerfile_after = (rec.get("artifacts_after") or {}).get("Dockerfile", "")
 
             if dockerfile_before:
@@ -186,7 +194,9 @@ def batch_scan_artifacts(
             after_critical = (rec.get("scan_after") or {}).get("critical", 999)
             after_high = (rec.get("scan_after") or {}).get("high", 999)
 
-            rec["has_cve_reduction"] = (before_critical + before_high) > (after_critical + after_high)
+            rec["has_cve_reduction"] = (before_critical + before_high) > (
+                after_critical + after_high
+            )
             rec["verified_scan"] = True
             return rec
 
@@ -224,7 +234,9 @@ def main(
     elif dockerfile:
         content = Path(dockerfile).read_text()
         result = scan_dockerfile(content)
-        logger.info(f"Scan result: {result['critical']} CRITICAL, {result['high']} HIGH")
+        logger.info(
+            f"Scan result: {result['critical']} CRITICAL, {result['high']} HIGH"
+        )
         logger.info(json.dumps(result, indent=2))
     elif repo:
         logger.info(f"Scanning repo {repo}...")

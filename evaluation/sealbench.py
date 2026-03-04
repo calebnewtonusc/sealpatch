@@ -9,11 +9,9 @@ Usage:
 
 import json
 import re
-import subprocess
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import torch
 import typer
@@ -22,6 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.cve_taxonomy import CVECategory
 from synthesis.prompts import SEALPATCH_SYSTEM_PROMPT
@@ -63,7 +62,8 @@ SEALBENCH_CASES: list[SealBenchCase] = [
         cve_category=CVECategory.BASE_IMAGE,
         dockerfile="FROM ubuntu:20.04\nRUN apt-get update && apt-get install -y libssl1.1\nCOPY . .\nCMD python app.py",
         cve_ids=["CVE-2022-0778"],
-        critical_before=1, high_before=0,
+        critical_before=1,
+        high_before=0,
         correct_fix_diff="--- a/Dockerfile\n+++ b/Dockerfile\n@@ -1 +1 @@\n-FROM ubuntu:20.04\n+FROM ubuntu:22.04",
         notes="OpenSSL CVE fixed in Ubuntu 22.04+",
     ),
@@ -73,7 +73,8 @@ SEALBENCH_CASES: list[SealBenchCase] = [
         cve_category=CVECategory.APP_DEP,
         dockerfile="FROM python:3.11-slim\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD python app.py",
         cve_ids=["CVE-2023-32681"],
-        critical_before=0, high_before=1,
+        critical_before=0,
+        high_before=1,
         correct_fix_diff="--- a/requirements.txt\n+++ b/requirements.txt\n@@ -1 +1 @@\n-requests==2.28.0\n+requests==2.31.0",
         notes="requests SSRF CVE patched in 2.31.0",
     ),
@@ -83,7 +84,8 @@ SEALBENCH_CASES: list[SealBenchCase] = [
         cve_category=CVECategory.APP_DEP,
         dockerfile="FROM python:3.11-slim\nCOPY requirements.txt dev-requirements.txt ./\nRUN pip install -r requirements.txt -r dev-requirements.txt",
         cve_ids=["CVE-2024-FAKE-PYTEST"],
-        critical_before=0, high_before=1,
+        critical_before=0,
+        high_before=1,
         correct_fix_diff="",  # No fix — dev-only
         is_dev_only=True,
         notes="pytest CVE in dev-requirements.txt — should be suppressed",
@@ -94,7 +96,8 @@ SEALBENCH_CASES: list[SealBenchCase] = [
         cve_category=CVECategory.RUNTIME,
         dockerfile="FROM node:18.12-alpine\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD node server.js",
         cve_ids=["CVE-2023-30581"],
-        critical_before=1, high_before=0,
+        critical_before=1,
+        high_before=0,
         correct_fix_diff="--- a/Dockerfile\n+++ b/Dockerfile\n@@ -1 +1 @@\n-FROM node:18.12-alpine\n+FROM node:18.20-alpine",
         notes="Node.js 18.12 had permission model bypass CVE; 18.20 fixes it",
     ),
@@ -120,7 +123,9 @@ def load_model(model_path: str):
     base_name = "Qwen/Qwen2.5-7B-Coder-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(base_name)
     tokenizer.pad_token = tokenizer.eos_token
-    base = AutoModelForCausalLM.from_pretrained(base_name, torch_dtype=torch.bfloat16, device_map="auto")
+    base = AutoModelForCausalLM.from_pretrained(
+        base_name, torch_dtype=torch.bfloat16, device_map="auto"
+    )
     if Path(model_path).exists():
         model = PeftModel.from_pretrained(base, model_path)
     else:
@@ -144,12 +149,21 @@ def run_inference(model, tokenizer, case: SealBenchCase) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=10000)
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
-        out = model.generate(**inputs, max_new_tokens=1024, temperature=0.1, do_sample=False,
-                             pad_token_id=tokenizer.eos_token_id)
-    return tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        out = model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            temperature=0.1,
+            do_sample=False,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    return tokenizer.decode(
+        out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+    )
 
 
-def evaluate_result(case: SealBenchCase, generated: str, latency: float) -> SealBenchResult:
+def evaluate_result(
+    case: SealBenchCase, generated: str, latency: float
+) -> SealBenchResult:
     fix_match = re.search(r"<fix>(.*?)</fix>", generated, re.DOTALL)
     fix_text = fix_match.group(1).strip() if fix_match else ""
 
@@ -161,10 +175,14 @@ def evaluate_result(case: SealBenchCase, generated: str, latency: float) -> Seal
         suppress_match = re.search(r"<suppress>(.*?)</suppress>", generated, re.DOTALL)
         suppressed = suppress_match and len(suppress_match.group(1).strip()) > 10
         return SealBenchResult(
-            case_id=case.id, cve_category=case.cve_category,
+            case_id=case.id,
+            cve_category=case.cve_category,
             cves_categorized_correctly=correct_cat,
-            fix_generated=False, fix_applies=True,
-            cve_eliminated=suppressed, behavior_preserved=True, is_minimal=True,
+            fix_generated=False,
+            fix_applies=True,
+            cve_eliminated=suppressed,
+            behavior_preserved=True,
+            is_minimal=True,
             latency=latency,
         )
 
@@ -179,16 +197,30 @@ def evaluate_result(case: SealBenchCase, generated: str, latency: float) -> Seal
             overlap = len(gt_tokens & gen_tokens) / len(gt_tokens)
             cve_eliminated = overlap >= 0.4  # 40% token overlap with ground-truth fix
 
-    gt_lines = len([l for l in case.correct_fix_diff.split("\n")
-                    if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))])
-    gen_lines = len([l for l in fix_text.split("\n")
-                     if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))])
+    gt_lines = len(
+        [
+            l
+            for l in case.correct_fix_diff.split("\n")
+            if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+        ]
+    )
+    gen_lines = len(
+        [
+            l
+            for l in fix_text.split("\n")
+            if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+        ]
+    )
     is_minimal = gen_lines <= max(gt_lines * 2, 5) if gt_lines > 0 else gen_lines <= 10
 
     # behavior_preserved: True only if the fix doesn't remove FROM/CMD/ENTRYPOINT entirely
     behavior_preserved = False
     if fix_applies:
-        removed_lines = [l[1:].strip() for l in fix_text.split("\n") if l.startswith("-") and not l.startswith("---")]
+        removed_lines = [
+            l[1:].strip()
+            for l in fix_text.split("\n")
+            if l.startswith("-") and not l.startswith("---")
+        ]
         critical_removed = any(
             any(instr in l.upper() for instr in ("FROM ", "CMD ", "ENTRYPOINT "))
             for l in removed_lines
@@ -196,11 +228,15 @@ def evaluate_result(case: SealBenchCase, generated: str, latency: float) -> Seal
         behavior_preserved = not critical_removed
 
     return SealBenchResult(
-        case_id=case.id, cve_category=case.cve_category,
+        case_id=case.id,
+        cve_category=case.cve_category,
         cves_categorized_correctly=correct_cat,
-        fix_generated=bool(fix_text), fix_applies=fix_applies,
-        cve_eliminated=cve_eliminated, behavior_preserved=behavior_preserved,
-        is_minimal=is_minimal, latency=latency,
+        fix_generated=bool(fix_text),
+        fix_applies=fix_applies,
+        cve_eliminated=cve_eliminated,
+        behavior_preserved=behavior_preserved,
+        is_minimal=is_minimal,
+        latency=latency,
     )
 
 
@@ -229,7 +265,9 @@ def main(
         generated = run_inference(model, tokenizer, case)
         result = evaluate_result(case, generated, time.time() - t0)
         results.append(result)
-        logger.info(f"[{i+1}/{len(cases)}] {case.id}: cat={result.cves_categorized_correctly} elim={result.cve_eliminated}")
+        logger.info(
+            f"[{i + 1}/{len(cases)}] {case.id}: cat={result.cves_categorized_correctly} elim={result.cve_eliminated}"
+        )
 
     n = len(results)
     if not n:
@@ -238,7 +276,10 @@ def main(
     else:
         summary = {
             "total": n,
-            "categorization_accuracy": sum(1 for r in results if r.cves_categorized_correctly) / n,
+            "categorization_accuracy": sum(
+                1 for r in results if r.cves_categorized_correctly
+            )
+            / n,
             "cve_elimination_rate": sum(1 for r in results if r.cve_eliminated) / n,
             "fix_application_rate": sum(1 for r in results if r.fix_applies) / n,
             "minimality_rate": sum(1 for r in results if r.is_minimal) / n,

@@ -14,7 +14,6 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Optional
 
 import aiohttp
 import typer
@@ -30,18 +29,29 @@ HEADERS = {
 
 # Files to collect per repo
 TARGET_FILES = [
-    "Dockerfile", "dockerfile",
-    "requirements.txt", "requirements-prod.txt", "requirements/prod.txt",
-    "package-lock.json", "yarn.lock",
-    "go.mod", "go.sum",
+    "Dockerfile",
+    "dockerfile",
+    "requirements.txt",
+    "requirements-prod.txt",
+    "requirements/prod.txt",
+    "package-lock.json",
+    "yarn.lock",
+    "go.mod",
+    "go.sum",
     "Gemfile.lock",
     "Cargo.lock",
     "pom.xml",
 ]
 
 SECURITY_COMMIT_KEYWORDS = [
-    "fix cve", "patch cve", "security fix", "security patch",
-    "bump.*security", "update.*vuln", "remediate", "upgrade.*cve",
+    "fix cve",
+    "patch cve",
+    "security fix",
+    "security patch",
+    "bump.*security",
+    "update.*vuln",
+    "remediate",
+    "upgrade.*cve",
 ]
 
 
@@ -50,7 +60,9 @@ async def fetch_json(session: aiohttp.ClientSession, url: str, params: dict = No
         try:
             async with session.get(url, headers=HEADERS, params=params) as resp:
                 if resp.status == 403:
-                    reset_at = int(resp.headers.get("X-RateLimit-Reset", time.time() + 60))
+                    reset_at = int(
+                        resp.headers.get("X-RateLimit-Reset", time.time() + 60)
+                    )
                     await asyncio.sleep(max(reset_at - time.time(), 1))
                     continue
                 if resp.status == 200:
@@ -61,7 +73,9 @@ async def fetch_json(session: aiohttp.ClientSession, url: str, params: dict = No
     return None
 
 
-async def get_file_content(session: aiohttp.ClientSession, repo: str, path: str, ref: str) -> str | None:
+async def get_file_content(
+    session: aiohttp.ClientSession, repo: str, path: str, ref: str
+) -> str | None:
     """Fetch raw file content from GitHub."""
     data = await fetch_json(
         session,
@@ -71,12 +85,16 @@ async def get_file_content(session: aiohttp.ClientSession, repo: str, path: str,
     if not data or data.get("encoding") != "base64":
         return None
     try:
-        return base64.b64decode(data["content"].replace("\n", "")).decode("utf-8", errors="replace")
+        return base64.b64decode(data["content"].replace("\n", "")).decode(
+            "utf-8", errors="replace"
+        )
     except Exception:
         return None
 
 
-async def find_security_commits(session: aiohttp.ClientSession, repo: str) -> list[dict]:
+async def find_security_commits(
+    session: aiohttp.ClientSession, repo: str
+) -> list[dict]:
     """Find commits with security/CVE fix keywords."""
     security_commits = []
     page = 1
@@ -130,8 +148,12 @@ async def collect_repo_artifacts(
             artifacts_after = {}
 
             for target_file in TARGET_FILES:
-                content_before = await get_file_content(session, repo, target_file, before_sha)
-                content_after = await get_file_content(session, repo, target_file, fix_sha)
+                content_before = await get_file_content(
+                    session, repo, target_file, before_sha
+                )
+                content_after = await get_file_content(
+                    session, repo, target_file, fix_sha
+                )
                 if content_before or content_after:
                     artifacts_before[target_file] = content_before or ""
                     artifacts_after[target_file] = content_after or ""
@@ -169,7 +191,9 @@ async def discover_repos(session: aiohttp.ClientSession, limit: int) -> list[str
                 f"{GITHUB_API}/search/repositories",
                 params={
                     "q": f"language:{lang} stars:>200 topic:docker archived:false",
-                    "sort": "stars", "per_page": 100, "page": page,
+                    "sort": "stars",
+                    "per_page": 100,
+                    "page": page,
                 },
             )
             if not data or not data.get("items"):

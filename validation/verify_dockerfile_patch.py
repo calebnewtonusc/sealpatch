@@ -22,19 +22,34 @@ DATA_DIR = Path(__file__).parents[1] / "data"
 
 # ─── Dockerfile syntax validation patterns ────────────────────────────────────
 VALID_DOCKERFILE_INSTRUCTIONS = {
-    "FROM", "RUN", "CMD", "LABEL", "EXPOSE", "ENV", "ADD", "COPY",
-    "ENTRYPOINT", "VOLUME", "USER", "WORKDIR", "ARG", "ONBUILD",
-    "STOPSIGNAL", "HEALTHCHECK", "SHELL", "#",
+    "FROM",
+    "RUN",
+    "CMD",
+    "LABEL",
+    "EXPOSE",
+    "ENV",
+    "ADD",
+    "COPY",
+    "ENTRYPOINT",
+    "VOLUME",
+    "USER",
+    "WORKDIR",
+    "ARG",
+    "ONBUILD",
+    "STOPSIGNAL",
+    "HEALTHCHECK",
+    "SHELL",
+    "#",
 }
 
 DOCKERFILE_INSTRUCTION_PATTERN = re.compile(
-    r'^(?:FROM|RUN|CMD|LABEL|EXPOSE|ENV|ADD|COPY|ENTRYPOINT|VOLUME|USER|'
-    r'WORKDIR|ARG|ONBUILD|STOPSIGNAL|HEALTHCHECK|SHELL|#)\b',
+    r"^(?:FROM|RUN|CMD|LABEL|EXPOSE|ENV|ADD|COPY|ENTRYPOINT|VOLUME|USER|"
+    r"WORKDIR|ARG|ONBUILD|STOPSIGNAL|HEALTHCHECK|SHELL|#)\b",
     re.MULTILINE | re.I,
 )
 
 # Version pattern for checking if a fix actually upgrades a version
-VERSION_PATTERN = re.compile(r'(\d+)\.(\d+)\.(\d+)')
+VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
 def is_valid_dockerfile_syntax(dockerfile: str) -> tuple[bool, str]:
@@ -90,7 +105,7 @@ def is_valid_dockerfile_syntax(dockerfile: str) -> tuple[bool, str]:
             in_continuation = True
 
     # Must have at least one FROM
-    from_count = len(re.findall(r'^FROM\s+', dockerfile, re.MULTILINE | re.I))
+    from_count = len(re.findall(r"^FROM\s+", dockerfile, re.MULTILINE | re.I))
     if from_count == 0:
         return False, "No FROM instruction found"
 
@@ -114,11 +129,17 @@ def check_fix_removes_vulnerability(
 
     # Check if vulnerable version appears in original
     if vulnerable_version not in original:
-        return True, f"Vulnerable version {vulnerable_version} not found in original (may be implicit)"
+        return (
+            True,
+            f"Vulnerable version {vulnerable_version} not found in original (may be implicit)",
+        )
 
     # Check if vulnerable version still appears in patched
     if vulnerable_version in patched:
-        return False, f"Vulnerable version {vulnerable_version} still present in patched Dockerfile"
+        return (
+            False,
+            f"Vulnerable version {vulnerable_version} still present in patched Dockerfile",
+        )
 
     return True, f"Vulnerable version {vulnerable_version} successfully removed"
 
@@ -160,15 +181,17 @@ def check_no_new_issues_introduced(patched: str) -> tuple[bool, list[str]]:
     new_issues = []
 
     # Check for secrets baked in
-    if re.search(r'ENV\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+', patched, re.I):
+    if re.search(r"ENV\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+", patched, re.I):
         new_issues.append("Secret/credential baked into ENV instruction")
 
     # Check for curl | sh
-    if re.search(r'curl\s+.*\|\s*(bash|sh)', patched, re.I):
+    if re.search(r"curl\s+.*\|\s*(bash|sh)", patched, re.I):
         new_issues.append("curl piped to shell in RUN instruction")
 
     # Check if pinned image became unpinned
-    from_tags = re.findall(r'^FROM\s+\S+:(latest|stable|lts)', patched, re.MULTILINE | re.I)
+    from_tags = re.findall(
+        r"^FROM\s+\S+:(latest|stable|lts)", patched, re.MULTILINE | re.I
+    )
     if from_tags:
         new_issues.append(f"Base image uses unpinned tag: {from_tags[0]}")
 
@@ -210,9 +233,9 @@ def validate_patch_record(record: dict) -> dict:
     # ── 2. Fix effectiveness check ────────────────────────────────────────────
     # Use the version the code was pinned to BEFORE the fix (not the patched version)
     vulnerable_version = (
-        record.get("version_range_start") or
-        record.get("vulnerable_version_range") or
-        ""
+        record.get("version_range_start")
+        or record.get("vulnerable_version_range")
+        or ""
     )
     package_name = record.get("package_name", "")
 
@@ -227,7 +250,9 @@ def validate_patch_record(record: dict) -> dict:
 
     # ── 3. Patch size scoring ─────────────────────────────────────────────────
     if original_df and patched_df:
-        validation["patch_size_score"] = compute_patch_size_score(original_df, patched_df)
+        validation["patch_size_score"] = compute_patch_size_score(
+            original_df, patched_df
+        )
 
     # ── 4. No new issues ──────────────────────────────────────────────────────
     if patched_df:
@@ -239,10 +264,19 @@ def validate_patch_record(record: dict) -> dict:
     quality_score = record.get("_quality_score", 0.5)
     patch_score = validation["patch_size_score"]
 
-    if (validation["syntax_valid"] and validation["fix_effective"] and
-            validation["no_new_issues"] and patch_score >= 0.7 and quality_score >= 0.7):
+    if (
+        validation["syntax_valid"]
+        and validation["fix_effective"]
+        and validation["no_new_issues"]
+        and patch_score >= 0.7
+        and quality_score >= 0.7
+    ):
         validation["quality_tier"] = "gold"
-    elif validation["syntax_valid"] and validation["fix_effective"] and quality_score >= 0.4:
+    elif (
+        validation["syntax_valid"]
+        and validation["fix_effective"]
+        and quality_score >= 0.4
+    ):
         validation["quality_tier"] = "silver"
     elif validation["syntax_valid"]:
         validation["quality_tier"] = "bronze"
@@ -282,15 +316,17 @@ def main():
     parser = argparse.ArgumentParser(
         description="Validate Dockerfile patches for SealPatch training data"
     )
-    parser.add_argument("--input", type=Path,
-                        default=DATA_DIR / "curriculum" / "patch_curriculum.jsonl")
+    parser.add_argument(
+        "--input", type=Path, default=DATA_DIR / "curriculum" / "patch_curriculum.jsonl"
+    )
     parser.add_argument("--output", type=Path, default=DATA_DIR / "validated")
     parser.add_argument("--stats", action="store_true")
-    parser.add_argument("--min-tier", choices=["gold", "silver", "bronze"],
-                        default="bronze")
+    parser.add_argument(
+        "--min-tier", choices=["gold", "silver", "bronze"], default="bronze"
+    )
     args = parser.parse_args()
 
-    print(f"=== SEALPATCH DOCKERFILE VALIDATION ===")
+    print("=== SEALPATCH DOCKERFILE VALIDATION ===")
     records = load_jsonl(args.input)
     if not records:
         print("No records to validate.")
@@ -306,20 +342,23 @@ def main():
         tier = rec.get("_patch_quality_tier", "unknown")
         tier_counts[tier] = tier_counts.get(tier, 0) + 1
 
-    syntax_failures = sum(1 for r in validated
-                          if not r["_patch_validation"]["syntax_valid"])
-    fix_failures = sum(1 for r in validated
-                       if not r["_patch_validation"]["fix_effective"])
-    new_issue_count = sum(1 for r in validated
-                          if not r["_patch_validation"]["no_new_issues"])
+    syntax_failures = sum(
+        1 for r in validated if not r["_patch_validation"]["syntax_valid"]
+    )
+    fix_failures = sum(
+        1 for r in validated if not r["_patch_validation"]["fix_effective"]
+    )
+    new_issue_count = sum(
+        1 for r in validated if not r["_patch_validation"]["no_new_issues"]
+    )
 
     total = len(validated)
-    print(f"\n=== VALIDATION RESULTS ===")
+    print("\n=== VALIDATION RESULTS ===")
     print(f"Total records: {total}")
-    print(f"\nQuality tiers:")
+    print("\nQuality tiers:")
     for tier in ["gold", "silver", "bronze", "reject"]:
         count = tier_counts.get(tier, 0)
-        print(f"  {tier:8}: {count:>6} ({100*count/max(total,1):.1f}%)")
+        print(f"  {tier:8}: {count:>6} ({100 * count / max(total, 1):.1f}%)")
     print(f"\nSyntax failures: {syntax_failures}")
     print(f"Ineffective fixes: {fix_failures}")
     print(f"Introduced new issues: {new_issue_count}")
@@ -335,15 +374,25 @@ def main():
     tier_order = {"gold": 3, "silver": 2, "bronze": 1, "reject": 0}
     min_order = tier_order.get(args.min_tier, 1)
 
-    accepted = [r for r in validated
-                if tier_order.get(r.get("_patch_quality_tier", "reject"), 0) >= min_order]
-    rejected = [r for r in validated
-                if tier_order.get(r.get("_patch_quality_tier", "reject"), 0) < min_order]
+    accepted = [
+        r
+        for r in validated
+        if tier_order.get(r.get("_patch_quality_tier", "reject"), 0) >= min_order
+    ]
+    rejected = [
+        r
+        for r in validated
+        if tier_order.get(r.get("_patch_quality_tier", "reject"), 0) < min_order
+    ]
 
     save_jsonl(accepted, args.output / "patch_validated_accepted.jsonl")
     save_jsonl(rejected, args.output / "patch_validated_rejected.jsonl")
-    print(f"\nAccepted: {args.output / 'patch_validated_accepted.jsonl'} ({len(accepted)})")
-    print(f"Rejected: {args.output / 'patch_validated_rejected.jsonl'} ({len(rejected)})")
+    print(
+        f"\nAccepted: {args.output / 'patch_validated_accepted.jsonl'} ({len(accepted)})"
+    )
+    print(
+        f"Rejected: {args.output / 'patch_validated_rejected.jsonl'} ({len(rejected)})"
+    )
 
     for tier in ["gold", "silver", "bronze"]:
         tier_recs = [r for r in validated if r.get("_patch_quality_tier") == tier]

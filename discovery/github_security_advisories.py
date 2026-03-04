@@ -21,7 +21,6 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
 DATA_DIR = Path(__file__).parents[1] / "data"
 GHSA_FILE = DATA_DIR / "github_security_advisories.jsonl"
@@ -31,8 +30,16 @@ GHSA_PROGRESS_FILE = DATA_DIR / "ghsa_progress.json"
 GH_BASE = "https://api.github.com"
 
 ECOSYSTEMS = [
-    "pip", "npm", "go", "maven", "rubygems",
-    "cargo", "nuget", "composer", "swift", "pub",
+    "pip",
+    "npm",
+    "go",
+    "maven",
+    "rubygems",
+    "cargo",
+    "nuget",
+    "composer",
+    "swift",
+    "pub",
 ]
 
 SEVERITY_FILTER = {
@@ -57,7 +64,7 @@ def gh_get(endpoint: str, params: dict, token: str) -> dict:
         with urllib.request.urlopen(req, timeout=20) as resp:
             return json.loads(resp.read())
     except Exception as e:
-        if hasattr(e, 'code') and e.code == 403:
+        if hasattr(e, "code") and e.code == 403:
             time.sleep(15)
         return {}
 
@@ -118,13 +125,16 @@ def search_patch_prs(
         items = data.get("items", [])
         for item in items:
             if "pull_request" in item:
-                prs.append({
-                    "number": item.get("number"),
-                    "title": item.get("title"),
-                    "url": item.get("html_url"),
-                    "state": item.get("state"),
-                    "merged": item.get("pull_request", {}).get("merged_at") is not None,
-                })
+                prs.append(
+                    {
+                        "number": item.get("number"),
+                        "title": item.get("title"),
+                        "url": item.get("html_url"),
+                        "state": item.get("state"),
+                        "merged": item.get("pull_request", {}).get("merged_at")
+                        is not None,
+                    }
+                )
         time.sleep(0.5)
 
     return prs[:5]  # cap at 5 PRs per advisory
@@ -195,28 +205,34 @@ def extract_package_vulnerabilities(advisory: dict) -> list[dict]:
             patch_instruction = f"Upgrade {package_name} to {fixed} or later"
 
         # Build Dockerfile-specific fix suggestion
-        dockerfile_fix = _build_dockerfile_fix(ecosystem, package_name, first_patched or patched_versions)
+        dockerfile_fix = _build_dockerfile_fix(
+            ecosystem, package_name, first_patched or patched_versions
+        )
 
-        records.append({
-            "type": "ghsa_vulnerability",
-            "ghsa_id": ghsa_id,
-            "cve_id": cve_id,
-            "ecosystem": ecosystem,
-            "package_name": package_name,
-            "vulnerable_version_range": vulnerable_range,
-            "patched_versions": patched_versions,
-            "first_patched_version": first_patched,
-            "severity": severity,
-            "cvss_score": cvss_score,
-            "summary": summary,
-            "description": description,
-            "patch_instruction": patch_instruction,
-            "dockerfile_fix": dockerfile_fix,
-            "published_at": advisory.get("published_at", ""),
-            "updated_at": advisory.get("updated_at", ""),
-            "references": [r.get("url") for r in advisory.get("references", [])[:5]],
-            "identifiers": advisory.get("identifiers", []),
-        })
+        records.append(
+            {
+                "type": "ghsa_vulnerability",
+                "ghsa_id": ghsa_id,
+                "cve_id": cve_id,
+                "ecosystem": ecosystem,
+                "package_name": package_name,
+                "vulnerable_version_range": vulnerable_range,
+                "patched_versions": patched_versions,
+                "first_patched_version": first_patched,
+                "severity": severity,
+                "cvss_score": cvss_score,
+                "summary": summary,
+                "description": description,
+                "patch_instruction": patch_instruction,
+                "dockerfile_fix": dockerfile_fix,
+                "published_at": advisory.get("published_at", ""),
+                "updated_at": advisory.get("updated_at", ""),
+                "references": [
+                    r.get("url") for r in advisory.get("references", [])[:5]
+                ],
+                "identifiers": advisory.get("identifiers", []),
+            }
+        )
 
     return records
 
@@ -230,14 +246,16 @@ def _build_dockerfile_fix(ecosystem: str, package_name: str, fixed_version: str)
     if eco == "pip":
         return f"In requirements.txt or Dockerfile: {package_name}>={fixed_version}"
     elif eco == "npm":
-        return f"In package.json: \"{package_name}\": \">={fixed_version}\""
+        return f'In package.json: "{package_name}": ">={fixed_version}"'
     elif eco == "maven":
-        return (f"In pom.xml: <version>{fixed_version}</version> "
-                f"for groupId containing {package_name}")
+        return (
+            f"In pom.xml: <version>{fixed_version}</version> "
+            f"for groupId containing {package_name}"
+        )
     elif eco == "go":
         return f"In go.mod: require {package_name} v{fixed_version}"
     elif eco == "cargo":
-        return f"In Cargo.toml: {package_name} = \">={fixed_version}\""
+        return f'In Cargo.toml: {package_name} = ">={fixed_version}"'
     elif eco in ("debian", "ubuntu", "alpine"):
         return f"In Dockerfile: RUN apt-get install -y {package_name}={fixed_version}"
     else:
@@ -259,8 +277,11 @@ def find_and_extract_patch_diff(
 
     # Look in references for PRs
     references = advisory.get("references", [])
-    pr_urls = [r.get("url", "") for r in references
-               if "pull" in r.get("url", "") and "github.com" in r.get("url", "")]
+    pr_urls = [
+        r.get("url", "")
+        for r in references
+        if "pull" in r.get("url", "") and "github.com" in r.get("url", "")
+    ]
 
     for pr_url in pr_urls[:3]:  # limit to 3 PRs per advisory
         # Parse owner/repo/number from URL
@@ -284,34 +305,48 @@ def find_and_extract_patch_diff(
         time.sleep(0.2)
 
         # Filter to security-relevant files
-        sec_files = [f for f in files if any(
-            kw in f["filename"].lower()
-            for kw in ["requirement", "package.json", "package-lock", "cargo.toml",
-                        "pom.xml", "gemfile", "go.mod", "dockerfile"]
-        )]
+        sec_files = [
+            f
+            for f in files
+            if any(
+                kw in f["filename"].lower()
+                for kw in [
+                    "requirement",
+                    "package.json",
+                    "package-lock",
+                    "cargo.toml",
+                    "pom.xml",
+                    "gemfile",
+                    "go.mod",
+                    "dockerfile",
+                ]
+            )
+        ]
 
         # Use the first vuln_rec only (not a cross-product of PRs × vuln_records)
         vuln_rec = vuln_records[0] if vuln_records else {}
-        patch_records.append({
-            "type": "patch_diff",
-            "ghsa_id": ghsa_id,
-            "cve_id": cve_id,
-            "package_name": vuln_rec.get("package_name"),
-            "ecosystem": vuln_rec.get("ecosystem"),
-            "vulnerable_version_range": vuln_rec.get("vulnerable_version_range"),
-            "first_patched_version": vuln_rec.get("first_patched_version"),
-            "pr_url": pr_url,
-            "pr_number": pr_number,
-            "repo": f"{owner}/{repo}",
-            "diff_preview": diff[:5000],
-            "security_files_changed": sec_files,
-            "training_triple": {
-                "vulnerability": f"{cve_id or ghsa_id}: {vuln_rec.get('summary', '')}",
-                "package": vuln_rec.get("package_name"),
-                "patch_instruction": vuln_rec.get("patch_instruction"),
-                "dockerfile_fix": vuln_rec.get("dockerfile_fix"),
-            },
-        })
+        patch_records.append(
+            {
+                "type": "patch_diff",
+                "ghsa_id": ghsa_id,
+                "cve_id": cve_id,
+                "package_name": vuln_rec.get("package_name"),
+                "ecosystem": vuln_rec.get("ecosystem"),
+                "vulnerable_version_range": vuln_rec.get("vulnerable_version_range"),
+                "first_patched_version": vuln_rec.get("first_patched_version"),
+                "pr_url": pr_url,
+                "pr_number": pr_number,
+                "repo": f"{owner}/{repo}",
+                "diff_preview": diff[:5000],
+                "security_files_changed": sec_files,
+                "training_triple": {
+                    "vulnerability": f"{cve_id or ghsa_id}: {vuln_rec.get('summary', '')}",
+                    "package": vuln_rec.get("package_name"),
+                    "patch_instruction": vuln_rec.get("patch_instruction"),
+                    "dockerfile_fix": vuln_rec.get("dockerfile_fix"),
+                },
+            }
+        )
 
     return patch_records
 
@@ -338,12 +373,20 @@ def main():
         description="Harvest GitHub Security Advisories for SealPatch training"
     )
     parser.add_argument("--token", default=os.environ.get("GITHUB_TOKEN", ""))
-    parser.add_argument("--ecosystem", type=str, default=None,
-                        help="Specific ecosystem (pip, npm, go, maven, etc.)")
-    parser.add_argument("--severity", choices=["critical", "high", "medium", "all"],
-                        default="all")
-    parser.add_argument("--extract-diffs", action="store_true",
-                        help="Also extract patch diffs from referenced PRs")
+    parser.add_argument(
+        "--ecosystem",
+        type=str,
+        default=None,
+        help="Specific ecosystem (pip, npm, go, maven, etc.)",
+    )
+    parser.add_argument(
+        "--severity", choices=["critical", "high", "medium", "all"], default="all"
+    )
+    parser.add_argument(
+        "--extract-diffs",
+        action="store_true",
+        help="Also extract patch diffs from referenced PRs",
+    )
     parser.add_argument("--max-pages", type=int, default=50)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
@@ -352,12 +395,16 @@ def main():
         print("Error: GITHUB_TOKEN required")
         return
 
-    progress = load_progress() if args.resume else {"completed_ecosystems": [], "total_advisories": 0, "total_diffs": 0}
+    progress = (
+        load_progress()
+        if args.resume
+        else {"completed_ecosystems": [], "total_advisories": 0, "total_diffs": 0}
+    )
 
     ecosystems_to_process = [args.ecosystem] if args.ecosystem else ECOSYSTEMS
     severity_list = SEVERITY_FILTER.get(args.severity, SEVERITY_FILTER["all"])
 
-    print(f"=== GITHUB ADVISORY HARVESTER ===")
+    print("=== GITHUB ADVISORY HARVESTER ===")
     print(f"Ecosystems: {ecosystems_to_process}")
     print(f"Severity: {args.severity}")
 
@@ -376,8 +423,11 @@ def main():
             page = 1
             while page <= args.max_pages:
                 advisories = fetch_advisories_page(
-                    args.token, ecosystem=ecosystem, severity=severity,
-                    page=page, per_page=100,
+                    args.token,
+                    ecosystem=ecosystem,
+                    severity=severity,
+                    page=page,
+                    per_page=100,
                 )
                 if not advisories:
                     break
@@ -390,7 +440,9 @@ def main():
                     vuln_batch.extend(vuln_records)
 
                     if args.extract_diffs and vuln_records:
-                        diffs = find_and_extract_patch_diff(advisory, vuln_records, args.token)
+                        diffs = find_and_extract_patch_diff(
+                            advisory, vuln_records, args.token
+                        )
                         diff_batch.extend(diffs)
                         time.sleep(0.3)
 
@@ -402,20 +454,24 @@ def main():
                 total_diffs += len(diff_batch)
                 eco_count += len(advisories)
 
-                print(f"    {ecosystem}/{severity} page {page}: +{len(vuln_batch)} vulns, +{len(diff_batch)} diffs")
+                print(
+                    f"    {ecosystem}/{severity} page {page}: +{len(vuln_batch)} vulns, +{len(diff_batch)} diffs"
+                )
 
                 if len(advisories) < 100:
                     break
                 page += 1
                 time.sleep(0.5)
 
-        progress["completed_ecosystems"] = progress.get("completed_ecosystems", []) + [ecosystem]
+        progress["completed_ecosystems"] = progress.get("completed_ecosystems", []) + [
+            ecosystem
+        ]
         progress["total_advisories"] = total_advisories
         progress["total_diffs"] = total_diffs
         save_progress(progress)
         print(f"  {ecosystem}: {eco_count} advisories processed")
 
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     print(f"Total vulnerability records: {total_advisories}")
     print(f"Total patch diffs: {total_diffs}")
     print(f"Outputs: {GHSA_FILE}, {PATCH_DIFFS_FILE}")

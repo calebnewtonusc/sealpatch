@@ -27,8 +27,8 @@ from peft import PeftModel
 import torch
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from core.cve_taxonomy import CVECategory, CVEFinding, categorize_cve
 from synthesis.prompts import SEALPATCH_SYSTEM_PROMPT
 
 MODEL_PATH = os.environ.get("SEALPATCH_MODEL", "./checkpoints/sealpatch-final")
@@ -45,7 +45,7 @@ _tokenizer = None
 class PatchRequest:
     repo: str
     dockerfile_content: str
-    scan_results: dict          # Normalized grype output
+    scan_results: dict  # Normalized grype output
     branch: str = "sealpatch/cve-fix"
     open_pr: bool = False
     dry_run: bool = False
@@ -107,7 +107,9 @@ def generate_patch_local(prompt: str) -> str:
         f"<|im_start|>system\n{SEALPATCH_SYSTEM_PROMPT}<|im_end|>\n"
         f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
     )
-    inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=10000)
+    inputs = tokenizer(
+        full_prompt, return_tensors="pt", truncation=True, max_length=10000
+    )
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
         out = model.generate(
@@ -117,7 +119,9 @@ def generate_patch_local(prompt: str) -> str:
             do_sample=False,
             pad_token_id=tokenizer.eos_token_id,
         )
-    return tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    return tokenizer.decode(
+        out[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+    )
 
 
 def generate_patch(prompt: str) -> str:
@@ -156,6 +160,7 @@ def build_prompt(request: PatchRequest) -> str:
 
 def extract_sections(raw: str) -> dict:
     """Extract <fix>, <categorize>, <suppress>, <validate> from model output."""
+
     def extract(tag, text):
         m = re.search(rf"<{tag}>(.*?)</{tag}>", text, re.DOTALL)
         return m.group(1).strip() if m else ""
@@ -180,7 +185,8 @@ def apply_diff_to_content(original: str, diff: str) -> Optional[str]:
         diff_path.write_text(diff)
         result = subprocess.run(
             ["patch", "-p0", str(orig_path), str(diff_path)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if result.returncode == 0:
             return orig_path.read_text()
@@ -188,20 +194,31 @@ def apply_diff_to_content(original: str, diff: str) -> Optional[str]:
         return None
 
 
-def clone_and_apply(repo: str, diff: str, branch: str, dry_run: bool = False) -> Optional[str]:
+def clone_and_apply(
+    repo: str, diff: str, branch: str, dry_run: bool = False
+) -> Optional[str]:
     """Clone repo, apply patch, push branch, return branch name."""
     with tempfile.TemporaryDirectory(prefix="sealpatch_clone_") as tmpdir:
         try:
             clone_url = f"https://{GITHUB_TOKEN}@github.com/{repo}.git"
-            subprocess.run(["git", "clone", "--depth=1", clone_url, tmpdir], check=True, capture_output=True)
-            subprocess.run(["git", "-C", tmpdir, "checkout", "-b", branch], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "clone", "--depth=1", clone_url, tmpdir],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", tmpdir, "checkout", "-b", branch],
+                check=True,
+                capture_output=True,
+            )
 
             # Write the diff to a file and apply it
             diff_path = Path(tmpdir) / ".sealpatch.diff"
             diff_path.write_text(diff)
             result = subprocess.run(
                 ["git", "-C", tmpdir, "apply", "--index", str(diff_path)],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             if result.returncode != 0:
                 logger.warning(f"git apply failed: {result.stderr[:300]}")
@@ -209,25 +226,43 @@ def clone_and_apply(repo: str, diff: str, branch: str, dry_run: bool = False) ->
 
             if not dry_run:
                 subprocess.run(
-                    ["git", "-C", tmpdir, "commit", "-m",
-                     f"fix: remediate CVEs via SealPatch\n\nAuto-generated minimal fix by SealPatch."],
-                    check=True, capture_output=True,
-                    env={**os.environ, "GIT_AUTHOR_NAME": "SealPatch", "GIT_AUTHOR_EMAIL": "bot@sealpatch.ai",
-                         "GIT_COMMITTER_NAME": "SealPatch", "GIT_COMMITTER_EMAIL": "bot@sealpatch.ai"},
+                    [
+                        "git",
+                        "-C",
+                        tmpdir,
+                        "commit",
+                        "-m",
+                        "fix: remediate CVEs via SealPatch\n\nAuto-generated minimal fix by SealPatch.",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    env={
+                        **os.environ,
+                        "GIT_AUTHOR_NAME": "SealPatch",
+                        "GIT_AUTHOR_EMAIL": "bot@sealpatch.ai",
+                        "GIT_COMMITTER_NAME": "SealPatch",
+                        "GIT_COMMITTER_EMAIL": "bot@sealpatch.ai",
+                    },
                 )
                 subprocess.run(
                     ["git", "-C", tmpdir, "push", "origin", branch],
-                    check=True, capture_output=True,
+                    check=True,
+                    capture_output=True,
                 )
             return branch
         except subprocess.CalledProcessError as e:
-            logger.warning(f"Git operation failed: {e.stderr if hasattr(e, 'stderr') else e}")
+            logger.warning(
+                f"Git operation failed: {e.stderr if hasattr(e, 'stderr') else e}"
+            )
             return None
 
 
 def open_github_pr(repo: str, branch: str, cves: list, explanation: str) -> str:
     """Open a GitHub PR with the CVE fix."""
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+    }
     cve_list = "\n".join(f"- {c}" for c in cves) if cves else "- See diff for details"
 
     pr_body = (
@@ -243,9 +278,14 @@ def open_github_pr(repo: str, branch: str, cves: list, explanation: str) -> str:
     # Query the repo's actual default branch before creating the PR
     repo_resp = requests.get(
         f"https://api.github.com/repos/{repo}",
-        headers=headers, timeout=15,
+        headers=headers,
+        timeout=15,
     )
-    default_branch = repo_resp.json().get("default_branch", "main") if repo_resp.status_code == 200 else "main"
+    default_branch = (
+        repo_resp.json().get("default_branch", "main")
+        if repo_resp.status_code == 200
+        else "main"
+    )
 
     resp = requests.post(
         f"https://api.github.com/repos/{repo}/pulls",
@@ -269,10 +309,12 @@ def open_github_pr(repo: str, branch: str, cves: list, explanation: str) -> str:
 def patch(request: PatchRequest) -> PatchResult:
     """Main entrypoint: generate patch, optionally apply and open PR."""
     if not request.scan_results or (
-        request.scan_results.get("critical", 0) + request.scan_results.get("high", 0) == 0
+        request.scan_results.get("critical", 0) + request.scan_results.get("high", 0)
+        == 0
     ):
         return PatchResult(
-            success=True, diff="",
+            success=True,
+            diff="",
             explanation="No CRITICAL or HIGH CVEs detected. No fix needed.",
         )
 
@@ -287,7 +329,8 @@ def patch(request: PatchRequest) -> PatchResult:
 
     if not diff or len(diff) < 10:
         return PatchResult(
-            success=False, diff="",
+            success=False,
+            diff="",
             explanation="Model did not produce a valid diff.",
             error="empty_fix",
         )
@@ -295,21 +338,32 @@ def patch(request: PatchRequest) -> PatchResult:
     cves = request.scan_results.get("cves", [])
 
     if request.open_pr and GITHUB_TOKEN:
-        pushed_branch = clone_and_apply(request.repo, diff, request.branch, dry_run=request.dry_run)
+        pushed_branch = clone_and_apply(
+            request.repo, diff, request.branch, dry_run=request.dry_run
+        )
         if pushed_branch and not request.dry_run:
             pr_url = open_github_pr(request.repo, pushed_branch, cves, explanation)
             return PatchResult(
-                success=True, diff=diff, pr_url=pr_url,
-                cves_addressed=cves, explanation=explanation, category=category,
+                success=True,
+                diff=diff,
+                pr_url=pr_url,
+                cves_addressed=cves,
+                explanation=explanation,
+                category=category,
             )
 
     return PatchResult(
-        success=True, diff=diff, pr_url="",
-        cves_addressed=cves, explanation=explanation, category=category,
+        success=True,
+        diff=diff,
+        pr_url="",
+        cves_addressed=cves,
+        explanation=explanation,
+        category=category,
     )
 
 
 # ── FastAPI server ──────────────────────────────────────────────────────────────
+
 
 class PatchRequestBody(BaseModel):
     repo: str
@@ -338,7 +392,9 @@ def patch_endpoint(body: PatchRequestBody):
     )
     result = patch(req)
     if not result.success:
-        raise HTTPException(status_code=422, detail=result.error or "Patch generation failed")
+        raise HTTPException(
+            status_code=422, detail=result.error or "Patch generation failed"
+        )
     return {
         "diff": result.diff,
         "pr_url": result.pr_url,
@@ -364,6 +420,7 @@ def main(
     """Generate minimal CVE remediation patches for Dockerfiles."""
     if serve:
         import uvicorn
+
         uvicorn.run(api, host="0.0.0.0", port=port)
         return
 

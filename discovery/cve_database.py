@@ -11,7 +11,6 @@ Usage:
 import asyncio
 import json
 import os
-import time
 from pathlib import Path
 
 import aiohttp
@@ -92,7 +91,9 @@ async def sync_osv_ecosystem(
                         ],
                         "fixed_version": fixed_version,
                         "summary": vuln.get("summary", "")[:500],
-                        "severity": vuln.get("database_specific", {}).get("severity", "UNKNOWN"),
+                        "severity": vuln.get("database_specific", {}).get(
+                            "severity", "UNKNOWN"
+                        ),
                         "aliases": vuln.get("aliases", []),
                         "published": vuln.get("published", ""),
                         "modified": vuln.get("modified", ""),
@@ -178,7 +179,7 @@ async def sync_nvd_batch(
                         break
 
                 # Extract affected configurations
-                configs = cve.get("configurations", [])
+                cve.get("configurations", [])
 
                 if cve_id in seen_cve_ids:
                     continue
@@ -189,8 +190,11 @@ async def sync_nvd_batch(
                     "last_modified": cve.get("lastModified", ""),
                     "cvss_score": cvss_score,
                     "severity": severity,
-                    "description": cve.get("descriptions", [{}])[0].get("value", "")[:1000]
-                    if cve.get("descriptions") else "",
+                    "description": cve.get("descriptions", [{}])[0].get("value", "")[
+                        :1000
+                    ]
+                    if cve.get("descriptions")
+                    else "",
                     "references": [r.get("url") for r in cve.get("references", [])[:5]],
                 }
                 f.write(json.dumps(record) + "\n")
@@ -216,7 +220,16 @@ async def sync_github_advisories(
 ) -> int:
     """Sync GitHub Security Advisory Database."""
     if ecosystems is None:
-        ecosystems = ["pip", "npm", "go", "maven", "rubygems", "cargo", "nuget", "composer"]
+        ecosystems = [
+            "pip",
+            "npm",
+            "go",
+            "maven",
+            "rubygems",
+            "cargo",
+            "nuget",
+            "composer",
+        ]
 
     output_file = output_dir / "github_advisories.jsonl"
     total = 0
@@ -261,12 +274,18 @@ async def sync_github_advisories(
                             "cve_id": advisory.get("cve_id"),
                             "ecosystem": ecosystem,
                             "package_name": vuln.get("package", {}).get("name", ""),
-                            "vulnerable_version_range": vuln.get("vulnerable_version_range", ""),
+                            "vulnerable_version_range": vuln.get(
+                                "vulnerable_version_range", ""
+                            ),
                             "patched_versions": vuln.get("patched_versions", ""),
-                            "first_patched_version": vuln.get("first_patched_version", {}).get("identifier"),
+                            "first_patched_version": vuln.get(
+                                "first_patched_version", {}
+                            ).get("identifier"),
                             "severity": advisory.get("severity", "UNKNOWN").upper(),
                             "summary": advisory.get("summary", "")[:500],
-                            "cvss_score": advisory.get("cvss", {}).get("score", 0.0) if advisory.get("cvss") else 0.0,
+                            "cvss_score": advisory.get("cvss", {}).get("score", 0.0)
+                            if advisory.get("cvss")
+                            else 0.0,
                             "published_at": advisory.get("published_at", ""),
                         }
                         f.write(json.dumps(record) + "\n")
@@ -277,7 +296,9 @@ async def sync_github_advisories(
                 page += 1
                 await asyncio.sleep(0.2)
 
-            logger.info(f"  GHSA {ecosystem}: synced advisories (running total: {total})")
+            logger.info(
+                f"  GHSA {ecosystem}: synced advisories (running total: {total})"
+            )
 
     logger.info(f"GHSA sync complete: {total} ecosystem advisories")
     return total
@@ -296,7 +317,15 @@ async def main_async(
         total = 0
         if sync_osv_flag:
             logger.info("Syncing OSV database...")
-            for ecosystem in ["PyPI", "npm", "Go", "Maven", "RubyGems", "crates.io", "NuGet"]:
+            for ecosystem in [
+                "PyPI",
+                "npm",
+                "Go",
+                "Maven",
+                "RubyGems",
+                "crates.io",
+                "NuGet",
+            ]:
                 total += await sync_osv_ecosystem(session, ecosystem, output_dir)
 
         if sync_nvd_flag:

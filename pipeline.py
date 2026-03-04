@@ -10,12 +10,9 @@ Usage:
   python pipeline.py --stage eval       # SealBench evaluation
 """
 
-import os
 import subprocess
-from pathlib import Path
 
 import typer
-from loguru import logger
 from rich.console import Console
 from rich.table import Table
 
@@ -133,7 +130,9 @@ def run_stage(stage: dict, dry_run: bool = False) -> bool:
 
 @app.command()
 def main(
-    stage: str = typer.Option(None, help="Phase: discovery|synthesis|validation|train|eval|deploy"),
+    stage: str = typer.Option(
+        None, help="Phase: discovery|synthesis|validation|train|eval|deploy"
+    ),
     from_stage: str = typer.Option(None, help="Resume from this stage name"),
     dry_run: bool = typer.Option(False, help="Print commands without executing"),
     list_stages: bool = typer.Option(False, "--list", help="List all stages"),
@@ -146,7 +145,9 @@ def main(
         table.add_column("Description")
         table.add_column("Est. Hours", justify="right")
         for s in STAGES:
-            table.add_row(s["name"], s["phase"], s["description"], str(s["estimated_hours"]))
+            table.add_row(
+                s["name"], s["phase"], s["description"], str(s["estimated_hours"])
+            )
         console.print(table)
         total = sum(s["estimated_hours"] for s in STAGES)
         console.print(f"\nTotal: {total:.1f} hours")
@@ -158,14 +159,18 @@ def main(
     elif from_stage:
         names = [s["name"] for s in STAGES]
         if from_stage in names:
-            stages_to_run = STAGES[names.index(from_stage):]
+            stages_to_run = STAGES[names.index(from_stage) :]
         else:
             valid = ", ".join(names)
-            console.print(f"[red]Unknown stage: '{from_stage}'. Valid stages: {valid}[/red]")
+            console.print(
+                f"[red]Unknown stage: '{from_stage}'. Valid stages: {valid}[/red]"
+            )
             raise typer.Exit(1)
 
     total_hours = sum(s["estimated_hours"] for s in stages_to_run)
-    console.print(f"\n[bold]SealPatch Pipeline[/bold] — {len(stages_to_run)} stages, ~{total_hours:.0f}h")
+    console.print(
+        f"\n[bold]SealPatch Pipeline[/bold] — {len(stages_to_run)} stages, ~{total_hours:.0f}h"
+    )
 
     for s in stages_to_run:
         if not run_stage(s, dry_run):

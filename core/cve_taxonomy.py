@@ -3,13 +3,14 @@ SealPatch — CVE Taxonomy
 Defines the 5-category CVE taxonomy and associated prioritization logic.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
 
 class CVECategory(str, Enum):
     """Primary CVE actionability category."""
+
     BASE_IMAGE = "BASE_IMAGE_CVE"
     APP_DEP = "APP_DEP_CVE"
     RUNTIME = "RUNTIME_CVE"
@@ -20,6 +21,7 @@ class CVECategory(str, Enum):
 
 class CVESubCategory(str, Enum):
     """Sub-categories for APP_DEP CVEs."""
+
     DIRECT = "direct_dep"
     TRANSITIVE = "transitive_dep"
     DEV_ONLY = "dev_only"
@@ -38,6 +40,7 @@ class Severity(str, Enum):
 @dataclass
 class CVEFinding:
     """A single CVE finding from a scanner."""
+
     cve_id: str
     severity: Severity
     cvss_score: float
@@ -52,6 +55,7 @@ class CVEFinding:
 @dataclass
 class CategorizedCVE:
     """A CVE finding with SealPatch categorization."""
+
     finding: CVEFinding
     category: CVECategory
     subcategory: CVESubCategory = CVESubCategory.UNKNOWN
@@ -110,11 +114,18 @@ def categorize_cve(finding: CVEFinding, dockerfile_context: str = "") -> Categor
 
     # Application dependency CVEs — check for dev-only
     dev_indicators_in_path = [
-        "dev-requirements", "requirements-dev", "test-requirements",
-        "requirements/test", "requirements/dev", "dev_requirements",
-        "/node_modules/.bin/", "devDependencies",
+        "dev-requirements",
+        "requirements-dev",
+        "test-requirements",
+        "requirements/test",
+        "requirements/dev",
+        "dev_requirements",
+        "/node_modules/.bin/",
+        "devDependencies",
     ]
-    is_dev_only = any(di in loc or di in dockerfile_context.lower() for di in dev_indicators_in_path)
+    is_dev_only = any(
+        di in loc or di in dockerfile_context.lower() for di in dev_indicators_in_path
+    )
 
     if is_dev_only:
         return CategorizedCVE(
@@ -164,7 +175,9 @@ def prioritize_findings(findings: list[CategorizedCVE]) -> list[CategorizedCVE]:
     return actionable + suppressible
 
 
-def group_by_root_cause(findings: list[CategorizedCVE]) -> dict[str, list[CategorizedCVE]]:
+def group_by_root_cause(
+    findings: list[CategorizedCVE],
+) -> dict[str, list[CategorizedCVE]]:
     """
     Group CVE findings by root cause to minimize PR count.
     Each group will become a single PR.
@@ -209,7 +222,7 @@ def parse_grype_sarif(sarif_json: dict) -> list[CVEFinding]:
             for loc in locations:
                 phys_loc = loc.get("physicalLocation", {})
                 artifact = phys_loc.get("artifactLocation", {}).get("uri", "")
-                region = phys_loc.get("region", {})
+                phys_loc.get("region", {})
 
                 # Extract severity from SARIF properties
                 level = result.get("level", "warning")
@@ -223,16 +236,18 @@ def parse_grype_sarif(sarif_json: dict) -> list[CVEFinding]:
 
                 # Extract package info from properties
                 props = result.get("properties", {})
-                findings.append(CVEFinding(
-                    cve_id=rule_id,
-                    severity=severity,
-                    cvss_score=props.get("cvss_score", 0.0),
-                    package_name=props.get("package_name", "unknown"),
-                    installed_version=props.get("installed_version", "unknown"),
-                    fixed_version=props.get("fixed_version"),
-                    artifact_type=props.get("artifact_type", "unknown"),
-                    artifact_location=artifact,
-                    description=message[:500],
-                ))
+                findings.append(
+                    CVEFinding(
+                        cve_id=rule_id,
+                        severity=severity,
+                        cvss_score=props.get("cvss_score", 0.0),
+                        package_name=props.get("package_name", "unknown"),
+                        installed_version=props.get("installed_version", "unknown"),
+                        fixed_version=props.get("fixed_version"),
+                        artifact_type=props.get("artifact_type", "unknown"),
+                        artifact_location=artifact,
+                        description=message[:500],
+                    )
+                )
 
     return findings

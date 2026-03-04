@@ -47,7 +47,6 @@ OFFICIAL_IMAGES = {
     "openjdk": "docker-library/openjdk",
     "php": "docker-library/php",
     "rust": "docker-library/rust",
-
     # Databases
     "postgres": "docker-library/postgres",
     "mysql": "docker-library/mysql",
@@ -57,13 +56,11 @@ OFFICIAL_IMAGES = {
     "elasticsearch": "elastic/elasticsearch",
     "cassandra": "docker-library/cassandra",
     "couchdb": "apache/couchdb-docker",
-
     # Web servers
     "nginx": "nginxinc/docker-nginx",
     "apache": "docker-library/httpd",
     "haproxy": "docker-library/haproxy",
     "traefik": "traefik/traefik-library-image",
-
     # Base OS images
     "ubuntu": "docker-library/ubuntu",
     "debian": "docker-library/debian",
@@ -71,7 +68,6 @@ OFFICIAL_IMAGES = {
     "centos": "docker-library/centos",
     "fedora": "docker-library/fedora",
     "amazonlinux": "amazonlinux/amazon-linux-docker",
-
     # Tools
     "jenkins": "jenkinsci/docker",
     "gitlab": "sameersbn/docker-gitlab",
@@ -80,7 +76,6 @@ OFFICIAL_IMAGES = {
     "sonarqube": "SonarSource/docker-sonarqube",
     "vault": "docker-library/vault",
     "consul": "hashicorp/docker-consul",
-
     # ML/Data
     "tensorflow": "tensorflow/tensorflow",
     "pytorch": "pytorch/pytorch",
@@ -91,32 +86,40 @@ OFFICIAL_IMAGES = {
 
 # Patterns that indicate unpinned/risky Dockerfile practices
 SECURITY_ISSUES = {
-    "unpinned_base_image": re.compile(r'^FROM\s+(\w[\w/.-]+):(latest|stable|lts)\s*$', re.MULTILINE | re.I),
-    "root_user": re.compile(r'^USER\s+root\s*$', re.MULTILINE | re.I),
+    "unpinned_base_image": re.compile(
+        r"^FROM\s+(\w[\w/.-]+):(latest|stable|lts)\s*$", re.MULTILINE | re.I
+    ),
+    "root_user": re.compile(r"^USER\s+root\s*$", re.MULTILINE | re.I),
     "no_user_set": None,  # checked separately
-    "curl_piped_to_sh": re.compile(r'curl\s+.*\|\s*(bash|sh)', re.I),
-    "wget_piped_to_sh": re.compile(r'wget\s+.*\|\s*(bash|sh)', re.I),
-    "apt_no_pinning": re.compile(r'apt-get\s+install\s+(?!.*=\s*\d)', re.I),
-    "pip_no_pinning": re.compile(r'pip\s+install\s+(?!.*==)(?!.*-r\s)', re.I),
-    "npm_audit_skip": re.compile(r'npm\s+install\s+.*--no-audit', re.I),
-    "secrets_in_env": re.compile(r'ENV\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+', re.I),
-    "secrets_in_arg": re.compile(r'ARG\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+', re.I),
-    "sudo_usage": re.compile(r'\bsudo\b', re.I),
-    "add_instead_of_copy": re.compile(r'^ADD\s+(?!https?://)', re.MULTILINE | re.I),
-    "privileged_cap": re.compile(r'--privileged|--cap-add\s*SYS_ADMIN', re.I),
-    "outdated_openssl": re.compile(r'openssl[<>=!]+1\.[01]\.\d', re.I),
+    "curl_piped_to_sh": re.compile(r"curl\s+.*\|\s*(bash|sh)", re.I),
+    "wget_piped_to_sh": re.compile(r"wget\s+.*\|\s*(bash|sh)", re.I),
+    "apt_no_pinning": re.compile(r"apt-get\s+install\s+(?!.*=\s*\d)", re.I),
+    "pip_no_pinning": re.compile(r"pip\s+install\s+(?!.*==)(?!.*-r\s)", re.I),
+    "npm_audit_skip": re.compile(r"npm\s+install\s+.*--no-audit", re.I),
+    "secrets_in_env": re.compile(
+        r"ENV\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+", re.I
+    ),
+    "secrets_in_arg": re.compile(
+        r"ARG\s+\w*(PASSWORD|SECRET|KEY|TOKEN)\w*\s*=\s*\S+", re.I
+    ),
+    "sudo_usage": re.compile(r"\bsudo\b", re.I),
+    "add_instead_of_copy": re.compile(r"^ADD\s+(?!https?://)", re.MULTILINE | re.I),
+    "privileged_cap": re.compile(r"--privileged|--cap-add\s*SYS_ADMIN", re.I),
+    "outdated_openssl": re.compile(r"openssl[<>=!]+1\.[01]\.\d", re.I),
 }
 
 # Labels for what makes a good vs bad Dockerfile
 GOOD_PRACTICES = {
-    "pinned_base_image": re.compile(r'^FROM\s+[\w/.-]+:(\d[\d.]+)(@sha256:[a-f0-9]+)?\s*$', re.MULTILINE),
-    "non_root_user": re.compile(r'^USER\s+(?!root)\w+', re.MULTILINE),
-    "multi_stage_build": re.compile(r'^FROM\s+.*\s+AS\s+\w+', re.MULTILINE | re.I),
-    "healthcheck": re.compile(r'^HEALTHCHECK\b', re.MULTILINE | re.I),
-    "pinned_apt": re.compile(r'apt-get\s+install\s+.*=\s*\d', re.I),
-    "pinned_pip": re.compile(r'pip\s+install\s+[\w-]+==[0-9.]+', re.I),
+    "pinned_base_image": re.compile(
+        r"^FROM\s+[\w/.-]+:(\d[\d.]+)(@sha256:[a-f0-9]+)?\s*$", re.MULTILINE
+    ),
+    "non_root_user": re.compile(r"^USER\s+(?!root)\w+", re.MULTILINE),
+    "multi_stage_build": re.compile(r"^FROM\s+.*\s+AS\s+\w+", re.MULTILINE | re.I),
+    "healthcheck": re.compile(r"^HEALTHCHECK\b", re.MULTILINE | re.I),
+    "pinned_apt": re.compile(r"apt-get\s+install\s+.*=\s*\d", re.I),
+    "pinned_pip": re.compile(r"pip\s+install\s+[\w-]+==[0-9.]+", re.I),
     "no_secrets_baked_in": None,  # checked separately
-    "layer_optimization": re.compile(r'&&\s*\\?\s*\n', re.I),  # chained RUN commands
+    "layer_optimization": re.compile(r"&&\s*\\?\s*\n", re.I),  # chained RUN commands
 }
 
 
@@ -152,10 +155,13 @@ def gh_get(endpoint: str, params: dict, token: str = "") -> dict:
 
 def fetch_image_tags(image_name: str, max_tags: int = 10) -> list[dict]:
     """Fetch tags for a Docker Hub image."""
-    data = dh_get(f"repositories/library/{image_name}/tags", {
-        "page_size": max_tags,
-        "ordering": "last_updated",
-    })
+    data = dh_get(
+        f"repositories/library/{image_name}/tags",
+        {
+            "page_size": max_tags,
+            "ordering": "last_updated",
+        },
+    )
     return data.get("results", [])
 
 
@@ -170,9 +176,9 @@ def fetch_dockerfile_from_github(
     paths_to_try = [
         f"{tag}/Dockerfile",
         f"{tag}/linux/amd64/Dockerfile",
-        f"Dockerfile",
+        "Dockerfile",
         f"{image_name}/Dockerfile",
-        f"latest/Dockerfile",
+        "latest/Dockerfile",
     ]
 
     parts = repo.split("/")
@@ -182,7 +188,9 @@ def fetch_dockerfile_from_github(
 
     for path in paths_to_try:
         url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/master/{path}"
-        req = urllib.request.Request(url, headers={"User-Agent": "sealpatch-scanner/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "sealpatch-scanner/1.0"}
+        )
         if token:
             req.add_header("Authorization", f"Bearer {token}")
         try:
@@ -197,10 +205,14 @@ def fetch_dockerfile_from_github(
     contents = gh_get(f"repos/{owner}/{repo_name}/contents", {}, token)
     if isinstance(contents, list):
         for item in contents:
-            if item.get("name") == "Dockerfile" or item.get("name", "").endswith("Dockerfile"):
+            if item.get("name") == "Dockerfile" or item.get("name", "").endswith(
+                "Dockerfile"
+            ):
                 dl_url = item.get("download_url", "")
                 if dl_url:
-                    req = urllib.request.Request(dl_url, headers={"User-Agent": "sealpatch-scanner/1.0"})
+                    req = urllib.request.Request(
+                        dl_url, headers={"User-Agent": "sealpatch-scanner/1.0"}
+                    )
                     try:
                         with urllib.request.urlopen(req, timeout=10) as resp:
                             return resp.read().decode("utf-8", errors="replace")
@@ -223,23 +235,34 @@ def analyze_dockerfile(dockerfile: str, image_name: str) -> dict:
         if pattern is None:
             continue
         if pattern.search(dockerfile):
-            severity = "HIGH" if issue_name in (
-                "curl_piped_to_sh", "wget_piped_to_sh",
-                "secrets_in_env", "secrets_in_arg",
-            ) else "MEDIUM"
-            issues.append({
-                "issue": issue_name,
-                "severity": severity,
-                "description": _get_issue_description(issue_name),
-            })
+            severity = (
+                "HIGH"
+                if issue_name
+                in (
+                    "curl_piped_to_sh",
+                    "wget_piped_to_sh",
+                    "secrets_in_env",
+                    "secrets_in_arg",
+                )
+                else "MEDIUM"
+            )
+            issues.append(
+                {
+                    "issue": issue_name,
+                    "severity": severity,
+                    "description": _get_issue_description(issue_name),
+                }
+            )
 
     # Check for no USER instruction (runs as root by default)
-    if not re.search(r'^USER\s+\w+', dockerfile, re.MULTILINE):
-        issues.append({
-            "issue": "no_user_set",
-            "severity": "MEDIUM",
-            "description": "No USER instruction: container runs as root by default",
-        })
+    if not re.search(r"^USER\s+\w+", dockerfile, re.MULTILINE):
+        issues.append(
+            {
+                "issue": "no_user_set",
+                "severity": "MEDIUM",
+                "description": "No USER instruction: container runs as root by default",
+            }
+        )
 
     # Check good practices
     for practice_name, pattern in GOOD_PRACTICES.items():
@@ -293,16 +316,19 @@ def generate_patch_suggestion(dockerfile: str, analysis: dict) -> str:
         if issue_name == "unpinned_base_image":
             # Replace :latest with a note (can't determine correct version automatically)
             patched = re.sub(
-                r'^(FROM\s+[\w/.-]+):latest\s*$',
-                r'\1:REPLACE_WITH_SPECIFIC_VERSION  # Pin to specific version, e.g., :3.11-slim',
-                patched, flags=re.MULTILINE | re.I,
+                r"^(FROM\s+[\w/.-]+):latest\s*$",
+                r"\1:REPLACE_WITH_SPECIFIC_VERSION  # Pin to specific version, e.g., :3.11-slim",
+                patched,
+                flags=re.MULTILINE | re.I,
             )
         elif issue_name == "no_user_set":
             # Add USER instruction before CMD/ENTRYPOINT
             patched = re.sub(
-                r'^(CMD|ENTRYPOINT)\b',
-                r'# Add non-root user for security\nRUN groupadd -r appuser && useradd -r -g appuser appuser\nUSER appuser\n\n\1',
-                patched, count=1, flags=re.MULTILINE,
+                r"^(CMD|ENTRYPOINT)\b",
+                r"# Add non-root user for security\nRUN groupadd -r appuser && useradd -r -g appuser appuser\nUSER appuser\n\n\1",
+                patched,
+                count=1,
+                flags=re.MULTILINE,
             )
 
     return patched
@@ -319,10 +345,11 @@ def build_training_record(
     patched = generate_patch_suggestion(dockerfile, analysis)
 
     issue_summaries = [
-        f"- [{i['severity']}] {i['description']}"
-        for i in analysis["issues"]
+        f"- [{i['severity']}] {i['description']}" for i in analysis["issues"]
     ]
-    issues_text = "\n".join(issue_summaries) if issue_summaries else "No significant issues found"
+    issues_text = (
+        "\n".join(issue_summaries) if issue_summaries else "No significant issues found"
+    )
 
     return {
         "type": "dockerfile_analysis",
@@ -352,19 +379,22 @@ def main():
         description="Scan Docker Hub official images for Dockerfile security issues"
     )
     parser.add_argument("--token", default=os.environ.get("GITHUB_TOKEN", ""))
-    parser.add_argument("--official-only", action="store_true",
-                        help="Only process official Docker images (default)")
+    parser.add_argument(
+        "--official-only",
+        action="store_true",
+        help="Only process official Docker images (default)",
+    )
     parser.add_argument("--max-images", type=int, default=200)
     parser.add_argument("--max-tags-per-image", type=int, default=5)
     args = parser.parse_args()
 
-    print(f"=== DOCKER HUB SCANNER ===")
+    print("=== DOCKER HUB SCANNER ===")
     print(f"Images to scan: {min(len(OFFICIAL_IMAGES), args.max_images)}")
 
     total_records = 0
     images_processed = 0
 
-    for image_name, gh_repo in list(OFFICIAL_IMAGES.items())[:args.max_images]:
+    for image_name, gh_repo in list(OFFICIAL_IMAGES.items())[: args.max_images]:
         print(f"\n  Scanning: {image_name} (source: {gh_repo})")
 
         # Fetch tags to know which versions exist
@@ -377,14 +407,18 @@ def main():
             if not tag:
                 continue
 
-            dockerfile = fetch_dockerfile_from_github(gh_repo, image_name, tag, args.token)
+            dockerfile = fetch_dockerfile_from_github(
+                gh_repo, image_name, tag, args.token
+            )
             time.sleep(0.2)
 
             if not dockerfile:
                 continue
 
             analysis = analyze_dockerfile(dockerfile, image_name)
-            record = build_training_record(image_name, tag, dockerfile, analysis, gh_repo)
+            record = build_training_record(
+                image_name, tag, dockerfile, analysis, gh_repo
+            )
             records_for_image.append(record)
 
         save_records(records_for_image)
@@ -393,11 +427,13 @@ def main():
 
         issue_counts = [r["analysis"]["issue_count"] for r in records_for_image]
         avg_issues = sum(issue_counts) / len(issue_counts) if issue_counts else 0
-        print(f"    {len(records_for_image)} Dockerfiles analyzed | avg issues: {avg_issues:.1f}")
+        print(
+            f"    {len(records_for_image)} Dockerfiles analyzed | avg issues: {avg_issues:.1f}"
+        )
 
         time.sleep(0.3)
 
-    print(f"\n=== DONE ===")
+    print("\n=== DONE ===")
     print(f"Images scanned: {images_processed}")
     print(f"Dockerfile records: {total_records}")
     print(f"Output: {DOCKERHUB_FILE}")

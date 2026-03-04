@@ -45,7 +45,8 @@ def compute_cve_reward(patch_text: str, task_meta: dict, sandbox_url: str) -> fl
     Apply patch, rescan with Grype, run smoke test.
     Reward based on CVE count reduction + CI green.
     """
-    import re, requests
+    import re
+    import requests
 
     fix_match = re.search(r"<fix>(.*?)</fix>", patch_text, re.DOTALL)
     if not fix_match:
@@ -73,7 +74,9 @@ def compute_cve_reward(patch_text: str, task_meta: dict, sandbox_url: str) -> fl
         return 0.0
 
     cve_before = task_meta.get("critical_before", 0) + task_meta.get("high_before", 0)
-    cve_after = result.get("critical_after", cve_before) + result.get("high_after", cve_before)
+    cve_after = result.get("critical_after", cve_before) + result.get(
+        "high_after", cve_before
+    )
     ci_green = result.get("smoke_test_passed", False)
 
     if not ci_green:
@@ -88,7 +91,13 @@ def compute_cve_reward(patch_text: str, task_meta: dict, sandbox_url: str) -> fl
         # All CRITICAL/HIGH eliminated + CI green
         reward = 1.0
         # Minimality bonus
-        diff_lines = len([l for l in diff.split("\n") if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))])
+        diff_lines = len(
+            [
+                l
+                for l in diff.split("\n")
+                if l.startswith(("+", "-")) and not l.startswith(("---", "+++"))
+            ]
+        )
         if diff_lines <= 5:
             reward = min(reward + 0.1, 1.1)
         elif diff_lines > 50:
@@ -113,6 +122,7 @@ def build_reward_fn(config: RLConfig):
         mean_reward = sum(rewards) / len(rewards) if rewards else 0.0
         logger.info(f"Rewards: mean={mean_reward:.3f}")
         return rewards
+
     return reward_fn
 
 
@@ -156,7 +166,7 @@ def load_rl_dataset(path: str) -> Dataset:
 
 
 def train(config: RLConfig):
-    logger.info(f"Loading base model + SFT adapter for GRPO...")
+    logger.info("Loading base model + SFT adapter for GRPO...")
     base = AutoModelForCausalLM.from_pretrained(
         config.base_model, torch_dtype=torch.bfloat16, use_cache=False
     )
@@ -175,16 +185,21 @@ def train(config: RLConfig):
         per_device_train_batch_size=config.per_device_train_batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         num_generations=config.num_generations,
-        logging_steps=config.logging_steps, save_steps=config.save_steps,
-        bf16=True, gradient_checkpointing=True,
+        logging_steps=config.logging_steps,
+        save_steps=config.save_steps,
+        bf16=True,
+        gradient_checkpointing=True,
         deepspeed="training/configs/deepspeed_zero3.json",
         report_to="wandb" if os.environ.get("WANDB_API_KEY") else "none",
         run_name="sealpatch-grpo",
     )
 
     trainer = GRPOTrainer(
-        model=model, processing_class=tokenizer,
-        args=grpo_cfg, train_dataset=dataset, reward_funcs=[reward_fn],
+        model=model,
+        processing_class=tokenizer,
+        args=grpo_cfg,
+        train_dataset=dataset,
+        reward_funcs=[reward_fn],
     )
     logger.info("Starting CVE-RL GRPO training...")
     trainer.train()
@@ -195,6 +210,10 @@ def train(config: RLConfig):
 
 if __name__ == "__main__":
     import typer
-    def main(sft_adapter: str = "./checkpoints/sft", output_dir: str = "./checkpoints/rl"):
+
+    def main(
+        sft_adapter: str = "./checkpoints/sft", output_dir: str = "./checkpoints/rl"
+    ):
         train(RLConfig(sft_adapter=sft_adapter, output_dir=output_dir))
+
     typer.run(main)

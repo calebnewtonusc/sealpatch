@@ -19,10 +19,8 @@ Usage:
 """
 
 import argparse
-import asyncio
 import json
 import os
-import re
 import time
 import urllib.parse
 import urllib.request
@@ -39,36 +37,73 @@ GH_BASE = "https://api.github.com"
 # ─── Container/package CVE filter criteria ───────────────────────────────────
 # CWE IDs most relevant to container/package vulnerabilities
 CONTAINER_CWES = {
-    "CWE-1035",   # OWASP: Using Components with Known Vulnerabilities
-    "CWE-1104",   # Use of Unmaintained Third Party Components
-    "CWE-20",     # Improper Input Validation
-    "CWE-22",     # Path Traversal
-    "CWE-78",     # OS Command Injection
-    "CWE-79",     # XSS (relevant in npm packages)
-    "CWE-89",     # SQL Injection (npm/pip)
-    "CWE-94",     # Code Injection
-    "CWE-502",    # Deserialization
-    "CWE-400",    # Resource Exhaustion
-    "CWE-918",    # SSRF
-    "CWE-611",    # XXE
-    "CWE-915",    # Improperly Controlled Modification of Dynamically-Determined Object
+    "CWE-1035",  # OWASP: Using Components with Known Vulnerabilities
+    "CWE-1104",  # Use of Unmaintained Third Party Components
+    "CWE-20",  # Improper Input Validation
+    "CWE-22",  # Path Traversal
+    "CWE-78",  # OS Command Injection
+    "CWE-79",  # XSS (relevant in npm packages)
+    "CWE-89",  # SQL Injection (npm/pip)
+    "CWE-94",  # Code Injection
+    "CWE-502",  # Deserialization
+    "CWE-400",  # Resource Exhaustion
+    "CWE-918",  # SSRF
+    "CWE-611",  # XXE
+    "CWE-915",  # Improperly Controlled Modification of Dynamically-Determined Object
 }
 
 # Keywords indicating a package/dependency CVE (not kernel/hardware)
 PACKAGE_CVE_KEYWORDS = [
-    "npm", "pypi", "pip", "rubygems", "maven", "gradle", "cargo", "crates.io",
-    "docker", "container", "apt", "dpkg", "package", "dependency", "library",
-    "node.js", "python", "ruby", "java", "golang", "rust", "perl", "php",
-    "nginx", "apache", "openssl", "curl", "libssl", "libcurl",
-    "log4j", "log4shell", "spring", "jackson", "struts",
+    "npm",
+    "pypi",
+    "pip",
+    "rubygems",
+    "maven",
+    "gradle",
+    "cargo",
+    "crates.io",
+    "docker",
+    "container",
+    "apt",
+    "dpkg",
+    "package",
+    "dependency",
+    "library",
+    "node.js",
+    "python",
+    "ruby",
+    "java",
+    "golang",
+    "rust",
+    "perl",
+    "php",
+    "nginx",
+    "apache",
+    "openssl",
+    "curl",
+    "libssl",
+    "libcurl",
+    "log4j",
+    "log4shell",
+    "spring",
+    "jackson",
+    "struts",
 ]
 
 # Well-known package CVEs with definitive patch information
 HIGH_VALUE_CVES = {
     "CVE-2021-44228": {"package": "log4j", "fixed": "2.15.0", "ecosystem": "maven"},
     "CVE-2021-45046": {"package": "log4j", "fixed": "2.16.0", "ecosystem": "maven"},
-    "CVE-2022-22965": {"package": "spring-webmvc", "fixed": "5.3.18", "ecosystem": "maven"},
-    "CVE-2022-42889": {"package": "commons-text", "fixed": "1.10.0", "ecosystem": "maven"},
+    "CVE-2022-22965": {
+        "package": "spring-webmvc",
+        "fixed": "5.3.18",
+        "ecosystem": "maven",
+    },
+    "CVE-2022-42889": {
+        "package": "commons-text",
+        "fixed": "1.10.0",
+        "ecosystem": "maven",
+    },
     "CVE-2021-42574": {"package": "various", "fixed": "N/A", "ecosystem": "unicode"},
     "CVE-2021-43138": {"package": "async", "fixed": "3.2.2", "ecosystem": "npm"},
     "CVE-2022-25858": {"package": "terser", "fixed": "5.14.2", "ecosystem": "npm"},
@@ -119,8 +154,15 @@ def is_container_package_cve(cve: dict) -> bool:
     # Check references for package registries
     references = cve.get("references", [])
     ref_urls = [r.get("url", "") for r in references]
-    registry_patterns = ["npmjs.com", "pypi.org", "rubygems.org", "mvnrepository",
-                         "crates.io", "pkg.go.dev", "hub.docker.com"]
+    registry_patterns = [
+        "npmjs.com",
+        "pypi.org",
+        "rubygems.org",
+        "mvnrepository",
+        "crates.io",
+        "pkg.go.dev",
+        "hub.docker.com",
+    ]
     if any(any(reg in url for reg in registry_patterns) for url in ref_urls):
         return True
 
@@ -158,15 +200,17 @@ def extract_affected_packages(cve: dict) -> list[dict]:
                 # versionEndExcluding is the first FIXED version
                 fixed_version = version_end_excl if version_end_excl else None
 
-                affected.append({
-                    "vendor": vendor,
-                    "product": product,
-                    "version_range_start": version_start or version,
-                    "version_range_end_including": version_end_incl,
-                    "version_range_end_excluding": version_end_excl,
-                    "fixed_version": fixed_version,
-                    "cpe": cpe,
-                })
+                affected.append(
+                    {
+                        "vendor": vendor,
+                        "product": product,
+                        "version_range_start": version_start or version,
+                        "version_range_end_including": version_end_incl,
+                        "version_range_end_excluding": version_end_excl,
+                        "fixed_version": fixed_version,
+                        "cpe": cpe,
+                    }
+                )
 
     return affected
 
@@ -197,7 +241,9 @@ def build_cve_record(vuln_wrapper: dict) -> Optional[dict]:
         return None
 
     descriptions = cve.get("descriptions", [])
-    desc_en = next((d.get("value", "") for d in descriptions if d.get("lang") == "en"), "")
+    desc_en = next(
+        (d.get("value", "") for d in descriptions if d.get("lang") == "en"), ""
+    )
 
     cvss = extract_cvss_scores(cve)
     affected_packages = extract_affected_packages(cve)
@@ -256,10 +302,12 @@ def search_dockerfiles_for_cve(
 
     # Search for Dockerfiles mentioning this package
     query = f"filename:Dockerfile {product} in:file"
-    url = f"{GH_BASE}/search/code?" + urllib.parse.urlencode({
-        "q": query,
-        "per_page": 10,
-    })
+    url = f"{GH_BASE}/search/code?" + urllib.parse.urlencode(
+        {
+            "q": query,
+            "per_page": 10,
+        }
+    )
     headers = {
         "Authorization": f"Bearer {gh_token}",
         "Accept": "application/vnd.github+json",
@@ -270,13 +318,15 @@ def search_dockerfiles_for_cve(
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read())
             for item in data.get("items", [])[:5]:
-                results.append({
-                    "cve_id": cve_id,
-                    "package": product,
-                    "repo": item.get("repository", {}).get("full_name", ""),
-                    "file_path": item.get("path", ""),
-                    "url": item.get("html_url", ""),
-                })
+                results.append(
+                    {
+                        "cve_id": cve_id,
+                        "package": product,
+                        "repo": item.get("repository", {}).get("full_name", ""),
+                        "file_path": item.get("path", ""),
+                        "url": item.get("html_url", ""),
+                    }
+                )
     except Exception:
         pass
 
@@ -308,10 +358,16 @@ def main():
         description="Sync NVD CVE database for SealPatch training data"
     )
     parser.add_argument("--sync", action="store_true", help="Sync CVEs from NVD")
-    parser.add_argument("--filter-container", action="store_true",
-                        help="Filter to container/package CVEs only (default behavior)")
-    parser.add_argument("--link-dockerfiles", action="store_true",
-                        help="Link CVEs to affected Dockerfiles on GitHub")
+    parser.add_argument(
+        "--filter-container",
+        action="store_true",
+        help="Filter to container/package CVEs only (default behavior)",
+    )
+    parser.add_argument(
+        "--link-dockerfiles",
+        action="store_true",
+        help="Link CVEs to affected Dockerfiles on GitHub",
+    )
     parser.add_argument("--nvd-key", default=os.environ.get("NVD_API_KEY", ""))
     parser.add_argument("--gh-token", default=os.environ.get("GITHUB_TOKEN", ""))
     parser.add_argument("--max-cves", type=int, default=300000)
@@ -323,16 +379,20 @@ def main():
         return
 
     if args.sync:
-        progress = load_progress() if args.resume else {"last_index": 0, "total_saved": 0}
+        progress = (
+            load_progress() if args.resume else {"last_index": 0, "total_saved": 0}
+        )
         start_index = progress["last_index"]
         total_saved = progress["total_saved"]
 
         # Rate limits: 5 req/30s without key, 50 req/30s with key
         sleep_time = 0.7 if args.nvd_key else 7.0
 
-        print(f"=== NVD CVE PIPELINE ===")
+        print("=== NVD CVE PIPELINE ===")
         print(f"Starting at index {start_index}")
-        print(f"API key present: {'yes' if args.nvd_key else 'no (slower rate limit)'}\n")
+        print(
+            f"API key present: {'yes' if args.nvd_key else 'no (slower rate limit)'}\n"
+        )
 
         idx = start_index
         while idx < args.max_cves:
@@ -353,20 +413,24 @@ def main():
             total_saved += len(records)
             idx += len(vulns)
 
-            print(f"  Index {idx:>7}/{total_results} | +{len(records)} container CVEs | total: {total_saved}")
+            print(
+                f"  Index {idx:>7}/{total_results} | +{len(records)} container CVEs | total: {total_saved}"
+            )
             save_progress(idx, total_saved)
 
             if len(vulns) < 2000:
-                print(f"  [DONE] All CVEs retrieved")
+                print("  [DONE] All CVEs retrieved")
                 break
 
-            time.sleep(sleep_time)  # Rate limit: skip on last page (already broke above)
+            time.sleep(
+                sleep_time
+            )  # Rate limit: skip on last page (already broke above)
 
         print(f"\nNVD sync complete: {total_saved} container/package CVEs saved")
         print(f"Output: {NVD_FILE}")
 
     if args.link_dockerfiles:
-        print(f"\n=== LINKING CVES TO DOCKERFILES ===")
+        print("\n=== LINKING CVES TO DOCKERFILES ===")
         if not args.gh_token:
             print("Warning: no GITHUB_TOKEN, skipping Dockerfile linking")
             return
@@ -381,7 +445,10 @@ def main():
                         pass
 
         # Prioritize high-value CVEs and CRITICAL severity
-        cves.sort(key=lambda c: (c.get("is_high_value", False), c.get("cvss_score", 0)), reverse=True)
+        cves.sort(
+            key=lambda c: (c.get("is_high_value", False), c.get("cvss_score", 0)),
+            reverse=True,
+        )
 
         total_links = 0
         for cve in cves[:1000]:  # Limit to top 1000 for Dockerfile search
@@ -391,7 +458,9 @@ def main():
             if links:
                 save_records(links, DOCKERFILE_LINKS_FILE)
                 total_links += len(links)
-                print(f"  {cve_id}: {len(links)} Dockerfile links (total: {total_links})")
+                print(
+                    f"  {cve_id}: {len(links)} Dockerfile links (total: {total_links})"
+                )
             time.sleep(0.5)
 
         print(f"\nDockerfile links saved: {total_links}")

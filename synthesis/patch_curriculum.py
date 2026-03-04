@@ -91,14 +91,16 @@ def detect_ecosystem(record: dict) -> str:
 
 def compute_complexity(record: dict) -> int:
     """Compute patch complexity level (1-5)."""
-    record_type = record.get("type", "")
+    record.get("type", "")
     issues = record.get("analysis", {}).get("issues", [])
     issue_count = len(issues)
     affected_packages = record.get("affected_packages", [])
 
     # Multi-stage Dockerfiles are inherently more complex
     dockerfile = record.get("dockerfile", "")
-    is_multi_stage = bool(dockerfile and "AS " in dockerfile and dockerfile.count("FROM") > 1)
+    is_multi_stage = bool(
+        dockerfile and "AS " in dockerfile and dockerfile.count("FROM") > 1
+    )
     if is_multi_stage:
         return 5 if issue_count >= 3 else 4
 
@@ -112,8 +114,7 @@ def compute_complexity(record: dict) -> int:
 
     # Base image upgrade
     has_base_image_issue = any(
-        i.get("issue") in ("unpinned_base_image", "outdated_openssl")
-        for i in issues
+        i.get("issue") in ("unpinned_base_image", "outdated_openssl") for i in issues
     )
     if has_base_image_issue and issue_count >= 2:
         return 3
@@ -198,7 +199,7 @@ def balance_by_ecosystem(
             selected = available[:]
             # Upsample if needed
             while len(selected) < target_count and available:
-                selected.extend(available[:target_count - len(selected)])
+                selected.extend(available[: target_count - len(selected)])
             selected = selected[:target_count]
 
         balanced.extend(selected)
@@ -252,7 +253,7 @@ def print_stats(records: list[dict]) -> None:
         quality_sum += rec.get("_quality_score", 0)
 
     total = len(records)
-    print(f"\n=== PATCH CURRICULUM STATISTICS ===")
+    print("\n=== PATCH CURRICULUM STATISTICS ===")
     print(f"Total records: {total}")
     print(f"Average quality: {quality_sum / max(total, 1):.3f}")
 
@@ -308,7 +309,7 @@ def main():
     curriculum = build_curriculum(all_records)
 
     if args.total and len(curriculum) > args.total:
-        curriculum = curriculum[:args.total]
+        curriculum = curriculum[: args.total]
 
     if args.stats:
         print_stats(curriculum)

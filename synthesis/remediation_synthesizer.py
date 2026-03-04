@@ -80,7 +80,9 @@ async def synthesize_from_advisory(
     cve_id = advisory.get("cve_id") or advisory.get("ghsa_id") or advisory.get("id", "")
     package_name = advisory.get("package_name", "")
     vulnerable_range = advisory.get("vulnerable_version_range", "")
-    fixed_version = advisory.get("patched_versions") or advisory.get("fixed_version") or ""
+    fixed_version = (
+        advisory.get("patched_versions") or advisory.get("fixed_version") or ""
+    )
     ecosystem = advisory.get("ecosystem", "Python")
     severity = advisory.get("severity", "HIGH")
     summary = advisory.get("summary", "")[:300]
@@ -109,17 +111,23 @@ async def synthesize_from_advisory(
             resp = await client.post(
                 f"{vllm_url}/v1/chat/completions",
                 headers={"Authorization": f"Bearer {VLLM_API_KEY}"},
-                json={"model": "Qwen/Qwen2.5-72B-Instruct", "messages": messages,
-                      "max_tokens": 1024, "temperature": 0.7},
+                json={
+                    "model": "Qwen/Qwen2.5-72B-Instruct",
+                    "messages": messages,
+                    "max_tokens": 1024,
+                    "temperature": 0.7,
+                },
                 timeout=90.0,
             )
             resp.raise_for_status()
             text = resp.json()["choices"][0]["message"]["content"].strip()
         else:
             from anthropic import AsyncAnthropic
+
             aclient = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
             msg = await aclient.messages.create(
-                model="claude-haiku-4-5", max_tokens=1024,
+                model="claude-haiku-4-5",
+                max_tokens=1024,
                 system=SYNTHESIS_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -129,7 +137,7 @@ async def synthesize_from_advisory(
         end = text.rfind("}")
         if start == -1 or end == -1 or end <= start:
             return None
-        data = json.loads(text[start:end + 1])
+        data = json.loads(text[start : end + 1])
 
         required = ["dockerfile_before", "dockerfile_after", "fix_diff", "cve_category"]
         if not all(k in data for k in required):
@@ -171,8 +179,10 @@ async def run_synthesis(
 
     # Filter for actionable advisories (have package + fix version)
     advisories = [
-        a for a in advisories
-        if a.get("package_name") and (a.get("fixed_version") or a.get("patched_versions"))
+        a
+        for a in advisories
+        if a.get("package_name")
+        and (a.get("fixed_version") or a.get("patched_versions"))
     ]
 
     random.shuffle(advisories)
@@ -184,14 +194,17 @@ async def run_synthesis(
 
     with open(output_file, "a") as out:
         async with httpx.AsyncClient() as client:
+
             async def synth_with_sem(advisory):
                 async with semaphore:
                     url = random.choice(vllm_urls)
-                    return await synthesize_from_advisory(client, advisory, backend, url)
+                    return await synthesize_from_advisory(
+                        client, advisory, backend, url
+                    )
 
             batch_size = concurrency * 4
             for i in range(0, len(advisories), batch_size):
-                batch = advisories[i:i + batch_size]
+                batch = advisories[i : i + batch_size]
                 results = await asyncio.gather(*[synth_with_sem(a) for a in batch])
                 for r in results:
                     if r:
@@ -199,7 +212,9 @@ async def run_synthesis(
                         total_written += 1
 
                 if i % (batch_size * 5) == 0:
-                    logger.info(f"  Progress: {i}/{len(advisories)} | Written: {total_written}")
+                    logger.info(
+                        f"  Progress: {i}/{len(advisories)} | Written: {total_written}"
+                    )
 
     logger.info(f"Synthesis complete: {total_written} pairs → {output_file}")
 
@@ -256,9 +271,11 @@ def build_dpo_pairs(
             try:
                 if backend == "claude":
                     import anthropic
+
                     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
                     msg = client.messages.create(
-                        model="claude-haiku-4-5", max_tokens=512,
+                        model="claude-haiku-4-5",
+                        max_tokens=512,
                         messages=[{"role": "user", "content": rejected_prompt}],
                     )
                     rejected = msg.content[0].text.strip()
@@ -268,9 +285,12 @@ def build_dpo_pairs(
                     resp = httpx.post(
                         f"{url}/v1/chat/completions",
                         headers={"Authorization": f"Bearer {VLLM_API_KEY}"},
-                        json={"model": "Qwen/Qwen2.5-72B-Instruct",
-                              "messages": [{"role": "user", "content": rejected_prompt}],
-                              "max_tokens": 512, "temperature": 0.9},
+                        json={
+                            "model": "Qwen/Qwen2.5-72B-Instruct",
+                            "messages": [{"role": "user", "content": rejected_prompt}],
+                            "max_tokens": 512,
+                            "temperature": 0.9,
+                        },
                         timeout=60.0,
                     )
                     resp.raise_for_status()
@@ -301,7 +321,9 @@ app = typer.Typer()
 @app.command()
 def main(
     output_dir: Path = typer.Option(Path("data/synthesized"), help="Output directory"),
-    advisories_dir: Path = typer.Option(Path("data/cve_db"), help="CVE advisory directory"),
+    advisories_dir: Path = typer.Option(
+        Path("data/cve_db"), help="CVE advisory directory"
+    ),
     backend: str = typer.Option("claude", help="Backend: claude | vllm"),
     concurrency: int = typer.Option(32, help="Concurrent synthesis workers"),
     dpo_mode: bool = typer.Option(False, "--dpo-mode"),

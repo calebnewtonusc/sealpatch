@@ -23,13 +23,14 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from loguru import logger
 from pydantic import BaseModel, Field
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from agents.scan_agent import normalize_grype_output, GRYPE_BIN, TRIVY_BIN
+from agents.scan_agent import normalize_grype_output, GRYPE_BIN
 
 DOCKER_BIN = os.environ.get("DOCKER_BIN", "docker")
 PATCH_TIMEOUT = int(os.environ.get("PATCH_TIMEOUT", "300"))  # seconds
@@ -76,7 +77,9 @@ def apply_diff(original: str, diff: str, workdir: Path) -> Optional[str]:
     # Use -p1 to match git-format unified diffs (strip one path component)
     result = subprocess.run(
         ["patch", "-p1", "-d", str(workdir)],
-        input=diff, capture_output=True, text=True,
+        input=diff,
+        capture_output=True,
+        text=True,
     )
     if result.returncode == 0:
         return orig_path.read_text()
@@ -85,27 +88,39 @@ def apply_diff(original: str, diff: str, workdir: Path) -> Optional[str]:
     # Initialize a temporary git repo so git apply has a valid git context.
     subprocess.run(
         ["git", "init"],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     subprocess.run(
         ["git", "config", "user.email", "sealpatch@localhost"],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     subprocess.run(
         ["git", "config", "user.name", "SealPatch"],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     subprocess.run(
         ["git", "add", "."],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     subprocess.run(
         ["git", "commit", "--allow-empty", "-m", "init"],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     result2 = subprocess.run(
         ["git", "apply", f"--directory={workdir}", str(diff_path)],
-        capture_output=True, text=True, cwd=str(workdir),
+        capture_output=True,
+        text=True,
+        cwd=str(workdir),
     )
     if result2.returncode == 0:
         return (workdir / "Dockerfile").read_text()
@@ -120,7 +135,8 @@ def build_docker_image(workdir: Path, tag: str) -> bool:
     try:
         result = subprocess.run(
             [DOCKER_BIN, "build", "-t", tag, str(workdir)],
-            capture_output=True, timeout=PATCH_TIMEOUT,
+            capture_output=True,
+            timeout=PATCH_TIMEOUT,
         )
         if result.returncode != 0:
             logger.debug(f"docker build failed:\n{result.stderr.decode()[:500]}")
@@ -139,7 +155,9 @@ def run_grype_scan(target: str, is_image: bool = True) -> dict:
     try:
         result = subprocess.run(
             [GRYPE_BIN, f"{prefix}{target}", "-o", "json", "--fail-on", "none"],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         raw = json.loads(result.stdout) if result.stdout else {}
         return normalize_grype_output(raw)
@@ -156,9 +174,19 @@ def run_smoke_test(image_tag: str, timeout: int = SMOKE_TEST_TIMEOUT) -> bool:
     container_name = f"sealpatch-smoke-{int(time.time())}"
     try:
         result = subprocess.run(
-            [DOCKER_BIN, "run", "--rm", "--name", container_name,
-             "--entrypoint", "echo", image_tag, "smoke_ok"],
-            capture_output=True, timeout=timeout,
+            [
+                DOCKER_BIN,
+                "run",
+                "--rm",
+                "--name",
+                container_name,
+                "--entrypoint",
+                "echo",
+                image_tag,
+                "smoke_ok",
+            ],
+            capture_output=True,
+            timeout=timeout,
         )
         return result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -182,10 +210,15 @@ def validate(request: ValidationRequest) -> ValidationResult:
         patched = apply_diff(request.dockerfile_before, request.diff, workdir)
         if patched is None:
             return ValidationResult(
-                patch_applies=False, build_succeeds=False, cve_eliminated=False,
-                smoke_test_passed=False, critical_after=request.critical_before,
-                high_after=request.high_before, critical_before=request.critical_before,
-                high_before=request.high_before, latency=time.time() - t0,
+                patch_applies=False,
+                build_succeeds=False,
+                cve_eliminated=False,
+                smoke_test_passed=False,
+                critical_after=request.critical_before,
+                high_after=request.high_before,
+                critical_before=request.critical_before,
+                high_before=request.high_before,
+                latency=time.time() - t0,
                 error="patch_apply_failed",
             )
 
@@ -207,7 +240,9 @@ def validate(request: ValidationRequest) -> ValidationResult:
             scan_after = run_grype_scan(image_tag, is_image=True)
             critical_after = scan_after.get("critical", request.critical_before)
             high_after = scan_after.get("high", request.high_before)
-            cve_eliminated = (critical_after + high_after) < (request.critical_before + request.high_before)
+            cve_eliminated = (critical_after + high_after) < (
+                request.critical_before + request.high_before
+            )
 
             # 4. Smoke test
             if request.run_smoke_test:
@@ -220,7 +255,9 @@ def validate(request: ValidationRequest) -> ValidationResult:
             scan_after = run_grype_scan(str(workdir), is_image=False)
             critical_after = scan_after.get("critical", request.critical_before)
             high_after = scan_after.get("high", request.high_before)
-            cve_eliminated = (critical_after + high_after) < (request.critical_before + request.high_before)
+            cve_eliminated = (critical_after + high_after) < (
+                request.critical_before + request.high_before
+            )
 
         return ValidationResult(
             patch_applies=True,
@@ -261,15 +298,19 @@ def build_rl_tasks(scanned_dir: Path, output_path: Path, min_cve: int = 1):
                 if c + h < min_cve:
                     continue
 
-                tasks.append({
-                    "repo": rec.get("repo", ""),
-                    "before_sha": rec.get("before_sha", ""),
-                    "language": rec.get("language", "unknown"),
-                    "dockerfile_before": (rec.get("artifacts_before") or {}).get("Dockerfile", ""),
-                    "cve_ids": scan_before.get("cves", []),
-                    "critical_before": c,
-                    "high_before": h,
-                })
+                tasks.append(
+                    {
+                        "repo": rec.get("repo", ""),
+                        "before_sha": rec.get("before_sha", ""),
+                        "language": rec.get("language", "unknown"),
+                        "dockerfile_before": (rec.get("artifacts_before") or {}).get(
+                            "Dockerfile", ""
+                        ),
+                        "cve_ids": scan_before.get("cves", []),
+                        "critical_before": c,
+                        "high_before": h,
+                    }
+                )
 
     with open(output_path, "w") as out:
         for t in tasks:
@@ -280,6 +321,7 @@ def build_rl_tasks(scanned_dir: Path, output_path: Path, min_cve: int = 1):
 
 
 # ── FastAPI server ──────────────────────────────────────────────────────────────
+
 
 class ExecuteRequest(BaseModel):
     diff: str
@@ -349,6 +391,7 @@ def main(
     """Validate CVE patches and build RL training tasks."""
     if serve:
         import uvicorn
+
         uvicorn.run(api, host="0.0.0.0", port=port)
         return
 
