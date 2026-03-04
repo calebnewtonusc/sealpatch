@@ -69,7 +69,7 @@ SEVERITY_LEVELS = {
 }
 
 
-def osv_query(ecosystem: str, page_token: str = None) -> dict:
+def osv_query(ecosystem: str, page_token: str | None = None) -> dict:
     """Query OSV API for a given ecosystem."""
     payload = {
         "ecosystem": ecosystem,

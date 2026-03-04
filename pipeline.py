@@ -11,15 +11,25 @@ Usage:
 """
 
 import subprocess
+from typing import TypedDict
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+
+class _StageDict(TypedDict):
+    name: str
+    description: str
+    cmd: str
+    phase: str
+    estimated_hours: float
+
+
 console = Console()
 app = typer.Typer()
 
-STAGES = [
+STAGES: list[_StageDict] = [
     {
         "name": "check_env",
         "description": "Verify environment, scanners (Grype/Trivy), and API keys",
@@ -114,7 +124,7 @@ STAGES = [
 ]
 
 
-def run_stage(stage: dict, dry_run: bool = False) -> bool:
+def run_stage(stage: _StageDict, dry_run: bool = False) -> bool:
     console.print(f"\n[bold cyan]▶ {stage['name']}[/bold cyan]: {stage['description']}")
     console.print(f"  [dim]{stage['cmd']}[/dim]")
     if dry_run:

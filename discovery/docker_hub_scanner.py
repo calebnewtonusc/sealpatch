@@ -123,7 +123,7 @@ GOOD_PRACTICES = {
 }
 
 
-def dh_get(endpoint: str, params: dict = None) -> dict:
+def dh_get(endpoint: str, params: dict | None = None) -> dict:
     """Make Docker Hub API request."""
     url = f"{DOCKERHUB_BASE}/{endpoint}"
     if params:

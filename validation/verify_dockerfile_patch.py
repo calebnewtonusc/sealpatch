@@ -203,7 +203,7 @@ def validate_patch_record(record: dict) -> dict:
     Validate a single patch record.
     Returns the record with validation metadata added.
     """
-    validation = {
+    validation: dict[str, object] = {
         "syntax_valid": True,
         "syntax_error": None,
         "fix_effective": True,
@@ -261,8 +261,8 @@ def validate_patch_record(record: dict) -> dict:
         validation["new_issues"] = new_issues
 
     # ── 5. Overall quality tier ───────────────────────────────────────────────
-    quality_score = record.get("_quality_score", 0.5)
-    patch_score = validation["patch_size_score"]
+    quality_score = float(record.get("_quality_score", 0.5))  # type: ignore[arg-type]
+    patch_score = float(validation["patch_size_score"])  # type: ignore[arg-type]
 
     if (
         validation["syntax_valid"]
@@ -291,7 +291,7 @@ def validate_patch_record(record: dict) -> dict:
 
 
 def load_jsonl(filepath: Path) -> list[dict]:
-    records = []
+    records: list[dict] = []
     if not filepath.exists():
         return records
     with open(filepath) as f:

@@ -55,7 +55,7 @@ SECURITY_COMMIT_KEYWORDS = [
 ]
 
 
-async def fetch_json(session: aiohttp.ClientSession, url: str, params: dict = None):
+async def fetch_json(session: aiohttp.ClientSession, url: str, params: dict | None = None):
     for attempt in range(3):
         try:
             async with session.get(url, headers=HEADERS, params=params) as resp:
@@ -182,7 +182,7 @@ async def collect_repo_artifacts(
 
 async def discover_repos(session: aiohttp.ClientSession, limit: int) -> list[str]:
     """Discover popular repos with Dockerfiles."""
-    repos = []
+    repos: list[str] = []
     for lang in ["python", "javascript", "go", "java", "ruby"]:
         page = 1
         while len(repos) < limit:

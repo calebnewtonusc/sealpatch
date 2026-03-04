@@ -131,7 +131,10 @@ async def synthesize_from_advisory(
                 system=SYNTHESIS_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": prompt}],
             )
-            text = msg.content[0].text.strip()
+            from anthropic.types import TextBlock as _TextBlock
+
+            block = msg.content[0]
+            text = block.text.strip() if isinstance(block, _TextBlock) else ""  # type: ignore[union-attr]
 
         start = text.find("{")
         end = text.rfind("}")
@@ -278,7 +281,10 @@ def build_dpo_pairs(
                         max_tokens=512,
                         messages=[{"role": "user", "content": rejected_prompt}],
                     )
-                    rejected = msg.content[0].text.strip()
+                    from anthropic.types import TextBlock as _TextBlock2
+
+                    _rej_block = msg.content[0]
+                    rejected = _rej_block.text.strip() if isinstance(_rej_block, _TextBlock2) else ""  # type: ignore[union-attr]
                     time.sleep(0.5)  # Rate limit: Anthropic API
                 else:
                     url = random.choice(VLLM_URLS)

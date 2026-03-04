@@ -216,7 +216,7 @@ async def sync_nvd_batch(
 async def sync_github_advisories(
     session: aiohttp.ClientSession,
     output_dir: Path,
-    ecosystems: list[str] = None,
+    ecosystems: list[str] | None = None,
 ) -> int:
     """Sync GitHub Security Advisory Database."""
     if ecosystems is None:

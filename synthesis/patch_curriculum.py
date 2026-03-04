@@ -165,7 +165,7 @@ def score_patch_quality(record: dict) -> float:
 
 
 def load_jsonl(filepath: Path) -> list[dict]:
-    records = []
+    records: list[dict] = []
     if not filepath.exists():
         return records
     with open(filepath) as f:

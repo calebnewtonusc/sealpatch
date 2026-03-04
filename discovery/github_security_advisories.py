@@ -78,8 +78,8 @@ def gh_get_list(endpoint: str, params: dict, token: str) -> list:
 
 def fetch_advisories_page(
     token: str,
-    ecosystem: str = None,
-    severity: str = None,
+    ecosystem: str | None = None,
+    severity: str | None = None,
     page: int = 1,
     per_page: int = 100,
 ) -> list[dict]:
